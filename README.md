@@ -86,4 +86,4 @@ The end-to-end suite covers the board's flows (views, search, sort, the sheet an
 
 Next.js 15 (App Router, every page static), React 19, TypeScript (strict), Tailwind CSS 4, shadcn/ui on Radix, TanStack Table 8, Recharts 3 through the shadcn chart component, lucide icons. Vitest, Playwright and axe for tests.
 
-The company mark, the En route and Pouring glyphs, the icons and the link preview image are drawn by the Python scripts in `design/` and exported with Inkscape; `DESIGN-NOTES.md` says what each one is for and how to rebuild them.
+The company mark, the En route and Pouring glyphs, the icons and the link preview image are drawn by the Python scripts in `design/` and exported with Inkscape (the link image in Chromium, to set it in the site's typeface); `DESIGN-NOTES.md` says what each one is for and how to rebuild them.
