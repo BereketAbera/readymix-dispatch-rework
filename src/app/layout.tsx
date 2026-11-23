@@ -15,13 +15,27 @@ const mono = IBM_Plex_Mono({
   weight: ["400", "500", "600"],
 });
 
+const DESCRIPTION =
+  "A one-screen trial, done in advance: the dispatch screen of a ready-mix operations portal, before and after, on invented data. No real company’s records were used.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://readymix-dispatch-rework.vercel.app"),
   title: {
     default: "Dispatch screen rework · sample",
     template: "%s · Dispatch rework sample",
   },
-  description:
-    "A one-screen trial, done in advance: the dispatch screen of a ready-mix operations portal, before and after, on anonymized data.",
+  description: DESCRIPTION,
+  openGraph: {
+    type: "website",
+    siteName: "Dispatch rework sample",
+    title: "Dispatch screen rework: before and after",
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Dispatch screen rework: before and after",
+    description: DESCRIPTION,
+  },
   robots: { index: false, follow: false },
 };
 
