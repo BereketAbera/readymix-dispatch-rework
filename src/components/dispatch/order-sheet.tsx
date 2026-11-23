@@ -5,7 +5,7 @@ import { Check, CirclePause, CirclePlay } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { TruckChip, TruckChips, formatM3 } from "@/components/dispatch/bits";
+import { MixLabel, TruckChip, TruckChips, formatM3 } from "@/components/dispatch/bits";
 import { RiskBadge, StatusBadge } from "@/components/dispatch/status";
 import {
   LOAD_STAGES,
@@ -279,7 +279,9 @@ export function OrderSheet({
             </div>
             <div>
               <dt className="text-xs text-muted-foreground">Mix</dt>
-              <dd className="font-medium">{order.mix.label}</dd>
+              <dd className="font-medium">
+                <MixLabel label={order.mix.label} />
+              </dd>
             </div>
             <div>
               <dt className="text-xs text-muted-foreground">Pour</dt>

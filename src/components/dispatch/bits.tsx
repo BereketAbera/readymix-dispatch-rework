@@ -85,3 +85,18 @@ export function formatM3(value: number): string {
 export function isDone(order: Order): boolean {
   return order.status === "complete" || order.status === "cancelled";
 }
+
+/** "32 MPa · 20 mm · 6% air" that wraps between parts, never inside one. */
+export function MixLabel({ label }: { label: string }) {
+  const parts = label.split(" · ");
+  return (
+    <>
+      {parts.map((part, i) => (
+        <span key={part} className="whitespace-nowrap">
+          {part}
+          {i < parts.length - 1 ? " · " : ""}
+        </span>
+      ))}
+    </>
+  );
+}

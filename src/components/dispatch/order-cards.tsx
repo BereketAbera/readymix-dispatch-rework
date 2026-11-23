@@ -44,11 +44,11 @@ function CardList({
   label: string;
 }) {
   return (
-    <ul className="grid gap-2" aria-label={label}>
+    <ul className="grid grid-cols-1 gap-2" aria-label={label}>
       {orders.map((o) => {
         const risk = getRisk(o, clock);
         return (
-          <li key={o.id} data-testid="order-card">
+          <li key={o.id} data-testid="order-card" className="min-w-0">
             <button
               type="button"
               onClick={() => onOpen(o.id)}
