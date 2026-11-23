@@ -24,11 +24,15 @@ export const SAMPLE_LINKS = [
  * The dark strip at the top belongs to the sample, not the product:
  * it switches between views and holds demo-only controls.
  */
+function isActive(href: string, pathname: string): boolean {
+  return pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
+}
+
 export function DemoBar({ children }: { children?: ReactNode }) {
   const pathname = usePathname();
-  const current = SAMPLE_LINKS.find((l) => l.href === pathname) ?? SAMPLE_LINKS[0];
+  const current = SAMPLE_LINKS.find((l) => isActive(l.href, pathname));
   return (
-    <div className="shrink-0 bg-zinc-900 text-zinc-100">
+    <section aria-label="About this sample" className="shrink-0 bg-zinc-900 text-zinc-100">
       <div className="flex min-h-11 flex-wrap items-center gap-x-5 gap-y-2 px-4 py-1.5">
         <Link
           href="/"
@@ -39,7 +43,7 @@ export function DemoBar({ children }: { children?: ReactNode }) {
         <nav aria-label="Sample views" className="hidden md:block">
           <ul className="flex items-center gap-1">
             {SAMPLE_LINKS.map((l) => {
-              const active = l.href === pathname;
+              const active = isActive(l.href, pathname);
               return (
                 <li key={l.href}>
                   <Link
@@ -59,15 +63,15 @@ export function DemoBar({ children }: { children?: ReactNode }) {
         </nav>
         <div className="ml-auto md:hidden">
           <DropdownMenu>
-            <DropdownMenuTrigger className="inline-flex h-8 items-center gap-1 rounded-md border border-zinc-700 px-2.5 text-sm text-zinc-100 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none">
+            <DropdownMenuTrigger className="inline-flex h-11 items-center gap-1 rounded-md border border-zinc-700 px-3 text-sm text-zinc-100 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none">
               <span className="sr-only">Sample view: </span>
-              {current.label}
+              {current?.label ?? "Views"}
               <ChevronDown className="size-4" aria-hidden />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-40">
               {SAMPLE_LINKS.map((l) => (
                 <DropdownMenuItem key={l.href} asChild>
-                  <Link href={l.href} aria-current={l.href === pathname ? "page" : undefined}>
+                  <Link href={l.href} aria-current={isActive(l.href, pathname) ? "page" : undefined}>
                     {l.label}
                   </Link>
                 </DropdownMenuItem>
@@ -76,9 +80,11 @@ export function DemoBar({ children }: { children?: ReactNode }) {
           </DropdownMenu>
         </div>
         {children && (
-          <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 md:ml-auto md:w-auto">{children}</div>
+          <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 md:ml-auto md:w-auto md:justify-start">
+            {children}
+          </div>
         )}
       </div>
-    </div>
+    </section>
   );
 }

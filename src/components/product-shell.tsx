@@ -3,14 +3,14 @@ import {
   ClipboardList,
   FlaskConical,
   LayoutGrid,
+  Lock,
   Receipt,
   Truck,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const NAV: { label: string; icon: LucideIcon; active?: boolean }[] = [
-  { label: "Dispatch", icon: LayoutGrid, active: true },
+const PLACEHOLDERS: { label: string; icon: LucideIcon }[] = [
   { label: "Batches and tickets", icon: ClipboardList },
   { label: "Quality and lab", icon: FlaskConical },
   { label: "Invoicing", icon: Receipt },
@@ -43,50 +43,81 @@ export function ProductBrand({ subtitle = "Operations" }: { subtitle?: string })
   );
 }
 
-/** Left navigation of the operations portal. Only Dispatch is part of this sample. */
-export function ProductSidebar() {
+/**
+ * Left navigation of the operations portal. Only Dispatch is part of this
+ * sample. From 1024 px it is an icon rail, from 1280 px the full sidebar,
+ * unless `compact` keeps the rail (annotations need the width).
+ */
+export function ProductSidebar({ compact = false }: { compact?: boolean }) {
+  const label = compact ? "sr-only" : "sr-only xl:not-sr-only";
+  const full = compact ? "hidden" : "hidden xl:flex";
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r bg-sidebar lg:flex" aria-label="Portal">
-      <div className="flex h-14 items-center border-b px-4">
-        <ProductBrand />
+    <aside
+      className={cn("hidden w-14 shrink-0 flex-col border-r bg-sidebar lg:flex", !compact && "xl:w-60")}
+      aria-label="Portal"
+    >
+      <div className="flex h-14 items-center border-b px-3">
+        <span className={cn(compact ? "flex" : "flex xl:hidden")}>
+          <BrandMark />
+          <span className="sr-only">Prairie Ready-Mix, operations (fictional)</span>
+        </span>
+        <span className={cn(full, "px-1")}>
+          <ProductBrand />
+        </span>
       </div>
       <nav aria-label="Portal sections" className="flex-1 p-2">
         <ul className="grid gap-0.5">
-          {NAV.map(({ label, icon: Icon, active }) => (
-            <li key={label}>
-              {active ? (
-                <a
-                  href="#board"
-                  aria-current="page"
-                  className="flex h-9 items-center gap-2.5 rounded-md bg-sidebar-accent px-2.5 text-sm font-medium text-sidebar-accent-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-                >
-                  <Icon className="size-4" aria-hidden />
-                  {label}
-                </a>
-              ) : (
-                <span
-                  className="flex h-9 cursor-default items-center gap-2.5 rounded-md px-2.5 text-sm text-muted-foreground"
-                  title="Not part of this sample"
-                >
-                  <Icon className="size-4" aria-hidden />
-                  {label}
-                  <span className="sr-only"> (not part of this sample)</span>
-                </span>
-              )}
+          <li>
+            <a
+              href="#board"
+              aria-current="page"
+              title="Dispatch"
+              className="flex h-9 items-center gap-2.5 rounded-md bg-sidebar-accent px-2.5 text-sm font-medium text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+            >
+              <LayoutGrid className="size-4 shrink-0" aria-hidden />
+              <span className={label}>Dispatch</span>
+            </a>
+          </li>
+        </ul>
+        <p className={cn(full, "mt-5 mb-1 items-center gap-1.5 px-2.5 text-xs font-medium text-muted-foreground")}>
+          <Lock className="size-3" aria-hidden />
+          Not in this sample
+        </p>
+        <ul className={cn("grid gap-0.5", compact ? "mt-3" : "mt-3 xl:mt-0")}>
+          {PLACEHOLDERS.map(({ label: text, icon: Icon }) => (
+            <li key={text}>
+              <span
+                className="flex h-9 cursor-default items-center gap-2.5 rounded-md px-2.5 text-sm text-muted-foreground"
+                title={`${text}: not part of this sample`}
+              >
+                <Icon className="size-4 shrink-0" aria-hidden />
+                <span className={label}>{text}</span>
+                <span className="sr-only"> (not part of this sample)</span>
+              </span>
             </li>
           ))}
         </ul>
       </nav>
-      <div className="border-t p-4 text-xs text-muted-foreground">Signed in as dispatcher · sample account</div>
+      <div className={cn(full, "border-t p-4 text-xs text-muted-foreground")}>Dispatcher · sample account</div>
     </aside>
   );
 }
 
-export function ProductShell({ children }: { children: ReactNode }) {
+export function ProductShell({
+  children,
+  aside,
+  compactNav = false,
+}: {
+  children: ReactNode;
+  /** A column on the right, such as the annotation legend. */
+  aside?: ReactNode;
+  compactNav?: boolean;
+}) {
   return (
     <div className="flex min-h-0 flex-1">
-      <ProductSidebar />
+      <ProductSidebar compact={compactNav} />
       <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+      {aside}
     </div>
   );
 }
