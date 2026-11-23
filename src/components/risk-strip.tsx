@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 
 /** The same colours as the board's risk badges. */
 const TONE = {
-  none: "bg-slate-100 font-medium text-slate-600 ring-slate-200",
-  risk: "bg-amber-50 text-amber-900 ring-amber-300",
-  late: "bg-red-50 text-red-800 ring-red-200",
+  none: "bg-slate-100 font-medium text-slate-600 ring-slate-200 border-slate-200",
+  risk: "bg-amber-50 text-amber-900 ring-amber-300 border-amber-300",
+  late: "bg-red-50 text-red-800 ring-red-200 border-red-200",
 };
 
 interface Band {
@@ -14,6 +14,8 @@ interface Band {
   tone: keyof typeof TONE;
   /** Minutes this band covers on its scale. */
   span: number;
+  /** No upper end: the band runs off the right of the scale, with no edge or corner there. */
+  open?: boolean;
 }
 
 interface Tick {
@@ -45,8 +47,8 @@ export function RiskStrip({ className }: { className?: string }) {
           bands={[
             { label: "On plan", tone: "none", span: SLIPPING_AFTER_MIN },
             { label: "At risk", tone: "risk", span: LATE_AFTER_MIN - SLIPPING_AFTER_MIN },
-            // Late has no upper end; it gets the same width as On plan.
-            { label: "Late", tone: "late", span: SLIPPING_AFTER_MIN },
+            // Late has no upper end: it gets the same width as On plan and stays open on the right.
+            { label: "Late", tone: "late", span: SLIPPING_AFTER_MIN, open: true },
           ]}
           ticks={[
             { label: "0", at: 0 },
@@ -67,7 +69,7 @@ export function RiskStrip({ className }: { className?: string }) {
         />
       </div>
       <figcaption className="mt-3 text-xs leading-normal text-muted-foreground">
-        What this sample assumes today. Your answer to the question above replaces these three numbers.
+        What this sample assumes today. Your answers in week one replace these three thresholds.
       </figcaption>
     </figure>
   );
@@ -86,7 +88,8 @@ function Scale({ title, bands, ticks }: { title: ReactNode; bands: Band[]; ticks
               key={b.label}
               style={{ flex: `${b.span} 1 0` }}
               className={cn(
-                "flex min-w-0 items-center justify-center rounded-md px-1 text-xs font-semibold whitespace-nowrap ring-1 ring-inset",
+                "flex min-w-0 items-center justify-center px-1 text-xs font-semibold whitespace-nowrap",
+                b.open ? "rounded-l-md border border-r-0" : "rounded-md ring-1 ring-inset",
                 TONE[b.tone],
               )}
             >
