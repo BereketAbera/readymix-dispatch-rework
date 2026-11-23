@@ -137,9 +137,9 @@ export default function Home() {
             What changed and why
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Each change, then the reason in terms of the dispatcher’s job. The reasons are assumptions: I have not met
-            your dispatchers yet, and the first week is for checking them. The numbers match the markers on the reworked
-            board.
+            Each change comes with its reason, put in terms of the dispatcher’s job. The reasons are assumptions: I have
+            not met your dispatchers yet, and the first week is for checking them. The numbers match the markers on the
+            reworked board.
           </p>
           <ol className="mt-5 grid gap-4">
             {CHANGES.map((c) => (

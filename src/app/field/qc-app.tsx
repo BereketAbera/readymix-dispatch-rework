@@ -176,7 +176,7 @@ export function QcApp({ day, plantId }: { day: DispatchDay; plantId: string }) {
         })}
         <p className="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground">
           <FlaskConical className="mt-px size-3.5 shrink-0" aria-hidden />
-          Sample test plan: the first load of every pour, then one more each 50 m³.
+          Sample test plan: the first load of every pour, then one more for every 50 m³ after that.
         </p>
       </section>
     </main>

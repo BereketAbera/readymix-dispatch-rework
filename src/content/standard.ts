@@ -76,7 +76,7 @@ export const STANDARD: StandardSection[] = [
     ],
     ["Controls in a row share one height: 36 px with a mouse, 44 px on a phone.", "Rows line up, and every tap target is big enough for a thumb or a glove."],
   ]),
-  section("states", "ST", "States", "Every screen designs these four before it ships.", [
+  section("states", "ST", "States", "For every screen: design all four before it ships.", [
     [
       "Loading uses skeletons in the shape of the final layout, never a blank page or a full-screen spinner; counts show as dashes until data arrives.",
       "Nothing jumps when data arrives, and no number is shown before it is known.",

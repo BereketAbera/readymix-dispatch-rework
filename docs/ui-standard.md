@@ -46,7 +46,7 @@ For booking pours, recording tests and anything else people type into.
 
 ## States (ST)
 
-Every screen designs these four before it ships.
+For every screen: design all four before it ships.
 
 | ID | Rule | Why |
 | --- | --- | --- |

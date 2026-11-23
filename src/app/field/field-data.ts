@@ -43,7 +43,7 @@ export interface PlannedTest extends Ticket {
   result: TestResult | null;
 }
 
-/** Test plan used by the sample: the first load of every pour, then one more each 50 m³. */
+/** Test plan used by the sample: the first load of every pour, then one more for every 50 m³ after that. */
 export const TEST_EVERY_M3 = 50;
 
 function testedLoads(order: Order): Load[] {
