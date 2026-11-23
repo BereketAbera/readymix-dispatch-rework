@@ -150,6 +150,7 @@ export function OrdersTable({
   selectedId,
   onOpen,
   annotate = false,
+  hiddenColumns = [],
   className,
 }: {
   orders: Order[];
@@ -158,6 +159,8 @@ export function OrdersTable({
   onOpen: (id: string) => void;
   /** Show annotation markers on the header and first row. */
   annotate?: boolean;
+  /** Column ids to leave out, for narrow containers such as documentation examples. */
+  hiddenColumns?: string[];
   className?: string;
 }) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "start", desc: false }]);
@@ -167,7 +170,7 @@ export function OrdersTable({
   const table = useReactTable({
     data: orders,
     columns,
-    state: { sorting },
+    state: { sorting, columnVisibility: Object.fromEntries(hiddenColumns.map((id) => [id, false])) },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),

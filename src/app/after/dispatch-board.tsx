@@ -86,7 +86,7 @@ export function DispatchBoard({ day, initial }: { day: DispatchDay; initial: Boa
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const source = preview === "empty" ? [] : orders;
+  const source = useMemo(() => (preview === "empty" ? [] : orders), [preview, orders]);
   const filtered = useMemo(() => filterOrders(source, { plant, view, query }, clock), [source, plant, view, query, clock]);
   const counts = useMemo(() => viewCounts(source, plant, clock), [source, plant, clock]);
   const kpis = useMemo(() => computeKpis(day, plant, source), [day, plant, source]);
