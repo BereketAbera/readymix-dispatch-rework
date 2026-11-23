@@ -43,7 +43,7 @@ const POUR_CODES: Record<PourType, string> = {
 };
 
 const selectClass =
-  "h-8 w-full rounded-md border border-input bg-white px-2 text-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none";
+  "h-8 w-full rounded-md border border-input bg-white px-2 text-sm focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none";
 
 interface Filters {
   plant: string;
