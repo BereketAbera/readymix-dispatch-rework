@@ -10,8 +10,8 @@ rebuilt and changed like code. The threshold strip is a React component instead;
 ## 1. A mixer truck for the company mark
 
 **What.** A side-on ready-mix truck in dark ink on a yellow tile: the drum tilted rear-up, about 2.3 times as long
-as it is deep, with one diagonal spiral fin and a clear gap to the frame and the cab; the cab and two wheels. It
-replaces the yellow "PR" letter tile. At 16 px that drawing runs together, so the browser tab shows the simpler
+as it is deep, with one diagonal spiral fin, clear of the rear wheel, the frame and the cab; the cab and two wheels.
+It replaces the yellow "PR" letter tile. At 16 px that drawing runs together, so the browser tab shows the simpler
 glyph from change 2 on the same tile.
 
 **Where.** The mark: the sidebar on `/after` (full and as the icon rail), the header of `/field` and `/field/qc`
@@ -23,8 +23,8 @@ which browsers draw at 16 px) and the 16 px image in `favicon.ico`. The yellow i
 **Why.** "PR" said nothing about the business, and on an overview that lists "PR 1" to "PR 7" it read as "pull
 request". A mixer drum is the one thing every dispatcher, driver and QC tech in ready-mix knows on sight, so the
 fictional company reads as a concrete producer at a glance. It is a plain pictogram with no letters, so it can't
-be taken for a real producer's livery. The mark is a different drawing from the En route and Fleet icons, so it
-still reads as the company's sign and not as one more icon in the list.
+be taken for a real producer's livery. The mark is a different drawing from the En route, Fleet and driver-note
+icons, so it still reads as the company's sign and not as one more icon in the list.
 
 ## 2. Mixer and chute glyphs in the status badges
 
@@ -43,13 +43,13 @@ lucide's factory: a batch-plant drawing did not hold up at 14 px. The glyphs sit
 round strokes) and are made with `createLucideIcon`, so they size, colour and align like the icons next to them.
 
 **How they were checked.** The badge icon is 14 px, so on a desk screen at 100% (1x) one pixel is 1.7 grid units:
-two parts closer than that print as one dark knot. The mark's drawing did exactly that
-at badge size, which is why the glyph is a separate, simpler drawing. The small mixer keeps at least 1.7 units of
-clear space between its drum, wheels, pedestal and cab, and the chute glyph between its stream, heap and floor;
-`design/glyphs.py` measures those gaps and stops the build if one gets smaller. Without the heap, the stream
-falling into an empty form read as a download icon, so the heap stays. Checked at 14 px at 1x on the sheet above,
-beside lucide's Factory and Clock, and in Chromium at 100% zoom on `/after`, `/standard` and `/field`; at 2x and on
-phones they are sharper still.
+two parts closer than that print as one dark knot. The mark's drawing did exactly that at badge size, which is why
+the glyph is a separate, simpler drawing. The small mixer keeps at least 1.7 units of clear space between its drum,
+wheels, pedestal and cab, and the chute glyph between the falling stream and the heap and between the top of the
+heap and the floor; `design/glyphs.py` measures those gaps and stops the build if one gets smaller. Without the
+heap, the stream falling into an empty form read as a download icon, so the heap stays. Checked at 14 px at 1x on
+the sheet above, beside lucide's Factory and Clock, and in Chromium at 100% zoom on `/after`, `/standard` and
+`/field`; at 2x and on phones they are sharper still.
 
 ## 3. The board's risk thresholds on the overview
 
