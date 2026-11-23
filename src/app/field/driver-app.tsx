@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, CircleCheck, Undo2 } from "lucide-react";
-import { MixerTruck } from "@/components/glyphs";
+import { Check, CircleCheck, Truck as TruckIcon, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { formatM3 } from "@/components/dispatch/bits";
@@ -59,7 +58,7 @@ export function DriverApp({ day, truck }: { day: DispatchDay; truck: Truck }) {
           <p className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">No load on the truck right now.</p>
         )}
         <p className="flex items-start gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
-          <MixerTruck className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <TruckIcon className="mt-0.5 size-4 shrink-0" aria-hidden />
           Field tests on this pour are done by the QC tech on site, not by the driver.
         </p>
       </div>

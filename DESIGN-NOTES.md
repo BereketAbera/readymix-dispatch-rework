@@ -26,12 +26,13 @@ fictional company reads as a concrete producer at a glance. It is a plain pictog
 be taken for a real producer's livery. The mark is a different drawing from the En route, Fleet and driver-note
 icons, so it still reads as the company's sign and not as one more icon in the list.
 
-## 2. Mixer and chute glyphs in the status badges
+## 2. A chute glyph for Pouring, a plain truck for En route
 
-**What.** En route shows a small mixer truck: a capsule drum tilted rear-up on one pedestal, the cab and two
-wheels, with no fin. Pouring shows concrete falling off the end of a chute onto a heap in a shallow form. They
-replace lucide's box van and water drops. The Fleet item in the sidebar and the driver's note on `/field` use the
-small mixer too.
+**What.** Pouring shows concrete falling off the end of a chute onto a heap in a shallow form, in place of lucide's
+water drops. En route, the Fleet item in the sidebar and the driver's note on `/field` use lucide's plain Truck in
+place of the box van. A small mixer drawing was tried for En route first and dropped: at 14 px on a 1x screen it
+still printed as a knot, and the plain truck reads instantly, which matters more than detail on the badge a
+dispatcher scans most. The mixer stays in the company mark, where it is drawn at 32 px and holds up.
 
 **Where.** `STATUS_META` in `src/components/dispatch/status.tsx`, so every row and phone card on `/after`, the
 order sheet's header and the badge strip on `/standard`. The glyphs live in `src/components/glyphs.ts`.
@@ -39,17 +40,16 @@ order sheet's header and the badge strip on `/standard`. The glyphs live in `src
 **Why.** The status badge is the most repeated thing on the board, and rule TB4 makes its icon part of the
 meaning. A parcel van and water drops are stand-ins; on a concrete board, water drops even hint at water added on
 site, which QC watches for. The labels and colours did not change, so nobody relearns anything. Batching keeps
-lucide's factory: a batch-plant drawing did not hold up at 14 px. The glyphs sit on lucide's grid (24 px, 2 px
-round strokes) and are made with `createLucideIcon`, so they size, colour and align like the icons next to them.
+lucide's factory: a batch-plant drawing did not hold up at 14 px. The chute glyph sits on lucide's grid (24 px, 2 px
+round strokes) and is made with `createLucideIcon`, so it sizes, colours and aligns like the icons next to it.
 
-**How they were checked.** The badge icon is 14 px, so on a desk screen at 100% (1x) one pixel is 1.7 grid units:
-two parts closer than that print as one dark knot. The mark's drawing did exactly that at badge size, which is why
-the glyph is a separate, simpler drawing. The small mixer keeps at least 1.7 units of clear space between its drum,
-wheels, pedestal and cab, and the chute glyph between the falling stream and the heap and between the top of the
-heap and the floor; `design/glyphs.py` measures those gaps and stops the build if one gets smaller. Without the
-heap, the stream falling into an empty form read as a download icon, so the heap stays. Checked at 14 px at 1x on
-the sheet above, beside lucide's Factory and Clock, and in Chromium at 100% zoom on `/after`, `/standard` and
-`/field`; at 2x and on phones they are sharper still.
+**How it was checked.** The badge icon is 14 px, so on a desk screen at 100% (1x) one pixel is 1.7 grid units:
+two parts closer than that print as one dark knot. The chute glyph keeps at least 1.7 units of clear space between
+the falling stream and the heap and between the top of the heap and the floor; `design/glyphs.py` measures those
+gaps and stops the build if one gets smaller. Without the heap, the stream falling into an empty form read as a
+download icon, so the heap stays. Checked at 14 px at 1x beside lucide's Factory and Clock, and in Chromium at 100%
+zoom on `/after`, `/standard` and `/field`. `design/glyphs.py` still writes the small mixer (MixerTruck) to
+`glyphs.ts` as the record of what was tried; nothing renders it.
 
 ## 3. The board's risk thresholds on the overview
 

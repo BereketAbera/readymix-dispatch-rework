@@ -5,21 +5,22 @@ import {
   LayoutGrid,
   Lock,
   Receipt,
+  Truck,
   type LucideIcon,
 } from "lucide-react";
-import { MARK_STROKE, MixerMark, MixerTruck } from "@/components/glyphs";
+import { MARK_STROKE, MixerMark } from "@/components/glyphs";
 import { cn } from "@/lib/utils";
 
 const PLACEHOLDERS: { label: string; icon: LucideIcon }[] = [
   { label: "Batches and tickets", icon: ClipboardList },
   { label: "Quality and lab", icon: FlaskConical },
   { label: "Invoicing", icon: Receipt },
-  { label: "Fleet", icon: MixerTruck },
+  { label: "Fleet", icon: Truck },
 ];
 
 /**
  * The fictional company's mark: a mixer truck on a yellow tile, the same drawing as
- * src/app/apple-icon.png. Fleet and En route use the simpler MixerTruck glyph instead.
+ * src/app/apple-icon.png. Fleet and En route use lucide's plain Truck, which stays legible at 14-16 px.
  */
 export function BrandMark({ className }: { className?: string }) {
   return (

@@ -8,9 +8,10 @@ import {
   Factory,
   MapPin,
   TriangleExclamationPoint,
+  Truck,
   type LucideIcon,
 } from "lucide-react";
-import { ChutePour, MixerTruck } from "@/components/glyphs";
+import { ChutePour } from "@/components/glyphs";
 import { cn } from "@/lib/utils";
 import type { OrderStatus, Risk } from "@/lib/dispatch";
 
@@ -25,7 +26,7 @@ interface StatusMeta {
 export const STATUS_META: Record<OrderStatus, StatusMeta> = {
   scheduled: { label: "Scheduled", icon: Clock, className: "bg-slate-100 text-slate-700 ring-slate-300", legacyCode: "SCHD" },
   batching: { label: "Batching", icon: Factory, className: "bg-indigo-50 text-indigo-800 ring-indigo-200", legacyCode: "BTCH" },
-  en_route: { label: "En route", icon: MixerTruck, className: "bg-sky-50 text-sky-800 ring-sky-200", legacyCode: "ENRT" },
+  en_route: { label: "En route", icon: Truck, className: "bg-sky-50 text-sky-800 ring-sky-200", legacyCode: "ENRT" },
   on_site: { label: "On site", icon: MapPin, className: "bg-violet-50 text-violet-800 ring-violet-200", legacyCode: "ONST" },
   pouring: { label: "Pouring", icon: ChutePour, className: "bg-teal-50 text-teal-800 ring-teal-200", legacyCode: "POUR" },
   complete: { label: "Complete", icon: CircleCheck, className: "bg-emerald-50 text-emerald-800 ring-emerald-200", legacyCode: "CMPL" },
