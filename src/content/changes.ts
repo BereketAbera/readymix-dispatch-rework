@@ -18,8 +18,8 @@ export const CHANGES: Change[] = [
   },
   {
     n: 3,
-    title: "Saved views, not eight dropdowns",
-    text: "Saved views (Today, At risk, Unassigned, On hold) and a search on the “/” key replace eight filter dropdowns, because those are the questions a dispatcher asks all day and each is now one click.",
+    title: "Saved views instead of a filter panel",
+    text: "Saved views (Today, At risk, Unassigned, On hold) and a search on the “/” key replace a panel of eight filter fields and an Apply button, because those are the questions a dispatcher asks all day and each is now one click.",
   },
   {
     n: 4,
