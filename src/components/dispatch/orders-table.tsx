@@ -9,13 +9,13 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, NotebookText } from "lucide-react";
+import { ArrowDown, ArrowUp, ClockAlert, NotebookText } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { LoadProgress, TruckChips, formatM3 } from "@/components/dispatch/bits";
-import { RiskNote, StatusBadge } from "@/components/dispatch/status";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { OrderLoads, TruckChips, formatM3, isDone } from "@/components/dispatch/bits";
+import { RiskNote, StaleNote, StatusBadge } from "@/components/dispatch/status";
 import { Marker } from "@/components/annotations";
 import { formatClock, getRisk, type Order } from "@/lib/dispatch";
-import { isDone } from "@/components/dispatch/bits";
 import { cn } from "@/lib/utils";
 
 interface ColumnMeta {
@@ -24,13 +24,17 @@ interface ColumnMeta {
 }
 
 /**
- * Column priority: Start, Customer and site, Volume, Loads and Status always show.
- * Trucks appear from 1024 px, Mix and pour from 1280 px. Below 768 px the board uses cards.
+ * Column priority follows the table's own width (a container query), not the
+ * screen's, so the sidebar or the annotation column never pushes it sideways:
+ * Start, Customer and site, Volume, Loads and Status always show; Trucks join
+ * at 860 px of table, Mix and pour at 1,040 px. Below 768 px of screen the board uses cards.
  */
 function buildColumns(
   clock: number,
   onOpen: (id: string) => void,
   annotateRow: string | null,
+  stale: ReadonlySet<string>,
+  staleText: string,
 ): ColumnDef<Order>[] {
   return [
     {
@@ -38,7 +42,7 @@ function buildColumns(
       accessorFn: (o) => o.scheduledStart,
       header: "Start",
       enableSorting: true,
-      meta: { className: "w-[88px] pl-4" } satisfies ColumnMeta,
+      meta: { className: "w-[72px] pl-4" } satisfies ColumnMeta,
       cell: ({ row }) => (
         <span className="font-mono text-sm font-medium tabular">{formatClock(row.original.scheduledStart)}</span>
       ),
@@ -47,35 +51,44 @@ function buildColumns(
       id: "customer",
       header: "Customer and site",
       enableSorting: false,
-      meta: { className: "min-w-[220px] max-w-[340px]" } satisfies ColumnMeta,
+      meta: { className: "min-w-[200px]" } satisfies ColumnMeta,
       cell: ({ row }) => {
         const o = row.original;
         return (
           <div className="min-w-0">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpen(o.id);
-              }}
-              className={cn(
-                "max-w-full truncate rounded-sm text-left font-medium hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
-                o.status === "cancelled" && "text-muted-foreground line-through",
-              )}
-            >
-              {o.customer}
-              <span className="sr-only">, open order {o.number}</span>
-            </button>
-            {annotateRow === o.id && <Marker n={6} className="relative top-0.5 ml-2 inline-flex size-5 text-[11px]" />}
-            <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <button
+                type="button"
+                data-order-open={o.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpen(o.id);
+                }}
+                className={cn(
+                  "min-w-0 truncate rounded-sm text-left font-medium hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none",
+                  o.status === "cancelled" && "text-muted-foreground line-through",
+                )}
+              >
+                {o.customer}
+                <span className="sr-only">
+                  {o.notes ? ", has notes" : ""}, open order {o.number}
+                </span>
+              </button>
               {o.notes && (
-                <>
-                  <NotebookText className="size-3.5 shrink-0" aria-hidden />
-                  <span className="sr-only">Has notes. </span>
-                </>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="shrink-0 text-muted-foreground" aria-hidden>
+                      <NotebookText className="size-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-64 text-left">
+                    {o.notes}
+                  </TooltipContent>
+                </Tooltip>
               )}
-              <span className="truncate">{o.siteAddress}</span>
-            </p>
+              {annotateRow === o.id && <Marker n={6} className="relative inline-flex size-5 shrink-0 text-[11px]" />}
+            </div>
+            <p className="truncate text-xs text-muted-foreground">{o.siteAddress}</p>
           </div>
         );
       },
@@ -84,7 +97,7 @@ function buildColumns(
       id: "mix",
       header: "Mix and pour",
       enableSorting: false,
-      meta: { className: "hidden xl:table-cell" } satisfies ColumnMeta,
+      meta: { className: "hidden @min-[1040px]:table-cell" } satisfies ColumnMeta,
       cell: ({ row }) => (
         <div className="min-w-0">
           <p className="truncate text-sm">{row.original.mix.label}</p>
@@ -103,33 +116,36 @@ function buildColumns(
         </>
       ),
       enableSorting: false,
-      meta: { className: "w-[96px] text-right" } satisfies ColumnMeta,
+      meta: { className: "w-[88px] text-right" } satisfies ColumnMeta,
       cell: ({ row }) => <span className="font-mono text-sm tabular">{formatM3(row.original.volumeM3)}</span>,
     },
     {
       id: "loads",
       header: "Loads",
       enableSorting: false,
-      meta: { className: "w-[120px] text-right" } satisfies ColumnMeta,
-      cell: ({ row }) => (
-        <LoadProgress
-          className="justify-end"
-          delivered={row.original.loadsDelivered}
-          total={row.original.loadsTotal}
-        />
-      ),
+      meta: { className: "w-[104px] text-right" } satisfies ColumnMeta,
+      cell: ({ row }) => <OrderLoads className="justify-end" order={row.original} />,
     },
     {
       id: "status",
       header: "Status",
       enableSorting: false,
-      meta: { className: "w-[200px]" } satisfies ColumnMeta,
+      meta: { className: "w-[184px]" } satisfies ColumnMeta,
       cell: ({ row }) => {
         const risk = getRisk(row.original, clock);
+        const isStale = stale.has(row.original.id);
         return (
           <div className="grid justify-items-start gap-0.5">
-            <StatusBadge status={row.original.status} />
-            {risk && <RiskNote risk={risk} />}
+            <span className="inline-flex items-center gap-1">
+              <StatusBadge status={row.original.status} />
+              {isStale && risk && (
+                <span className="text-amber-800">
+                  <ClockAlert className="size-3.5" aria-hidden />
+                  <span className="sr-only">{staleText}</span>
+                </span>
+              )}
+            </span>
+            {risk ? <RiskNote risk={risk} /> : isStale ? <StaleNote text={staleText} /> : null}
           </div>
         );
       },
@@ -138,11 +154,13 @@ function buildColumns(
       id: "trucks",
       header: "Trucks",
       enableSorting: false,
-      meta: { className: "hidden w-[236px] pr-4 lg:table-cell" } satisfies ColumnMeta,
+      meta: { className: "hidden w-[190px] pr-4 @min-[860px]:table-cell" } satisfies ColumnMeta,
       cell: ({ row }) => <TruckChips order={row.original} />,
     },
   ];
 }
+
+const NO_STALE: ReadonlySet<string> = new Set();
 
 export function OrdersTable({
   orders,
@@ -151,6 +169,8 @@ export function OrdersTable({
   onOpen,
   annotate = false,
   hiddenColumns = [],
+  stale = NO_STALE,
+  staleText = "",
   className,
 }: {
   orders: Order[];
@@ -161,17 +181,25 @@ export function OrdersTable({
   annotate?: boolean;
   /** Column ids to leave out, for narrow containers such as documentation examples. */
   hiddenColumns?: string[];
+  /** Orders whose live data is stale (partial data), flagged in the status cell. */
+  stale?: ReadonlySet<string>;
+  staleText?: string;
   className?: string;
 }) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "start", desc: false }]);
   const firstOpen = orders.filter((o) => !isDone(o)).sort((a, b) => a.scheduledStart - b.scheduledStart)[0];
   const annotateRow = annotate ? (firstOpen?.id ?? null) : null;
-  const columns = useMemo(() => buildColumns(clock, onOpen, annotateRow), [clock, onOpen, annotateRow]);
+  const columns = useMemo(
+    () => buildColumns(clock, onOpen, annotateRow, stale, staleText),
+    [clock, onOpen, annotateRow, stale, staleText],
+  );
   const table = useReactTable({
     data: orders,
     columns,
     state: { sorting, columnVisibility: Object.fromEntries(hiddenColumns.map((id) => [id, false])) },
     onSortingChange: setSorting,
+    // Start toggles between earliest and latest first; a click never silently removes the sort.
+    enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getRowId: (o) => o.id,
@@ -183,13 +211,14 @@ export function OrdersTable({
   const doneRows = sortedRows.filter((r) => isDone(r.original));
 
   return (
-    <Table containerClassName={cn("overflow-auto", className)} className="border-separate border-spacing-0">
+    <Table containerClassName={cn("@container overflow-auto", className)} className="border-separate border-spacing-0">
       <TableHeader className="sticky top-0 z-10 bg-card [&_tr]:border-b-0">
         {table.getHeaderGroups().map((group) => (
           <TableRow key={group.id} className="hover:bg-transparent">
             {group.headers.map((header) => {
               const meta = header.column.columnDef.meta as ColumnMeta | undefined;
               const sorted = header.column.getIsSorted();
+              const next = header.column.getNextSortingOrder();
               return (
                 <TableHead
                   key={header.id}
@@ -203,7 +232,7 @@ export function OrdersTable({
                     <button
                       type="button"
                       onClick={header.column.getToggleSortingHandler()}
-                      className="inline-flex items-center gap-1 rounded-sm hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                      className="inline-flex items-center gap-1 rounded-sm hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
                     >
                       {flexRender(header.column.columnDef.header, header.getContext())}
                       {sorted === "desc" ? (
@@ -211,7 +240,7 @@ export function OrdersTable({
                       ) : (
                         <ArrowUp className="size-3.5" aria-hidden />
                       )}
-                      <span className="sr-only">, sort {sorted === "asc" ? "latest first" : "earliest first"}</span>
+                      <span className="sr-only">, sort {next === "desc" ? "latest first" : "earliest first"}</span>
                     </button>
                   ) : (
                     flexRender(header.column.columnDef.header, header.getContext())
@@ -247,7 +276,7 @@ export function OrdersTable({
                 data-testid="order-row"
                 data-state={row.original.id === selectedId ? "selected" : undefined}
                 onClick={() => onOpen(row.original.id)}
-                className={cn("h-[52px] cursor-pointer", row.original.status === "cancelled" && "text-muted-foreground")}
+                className={cn("h-14 cursor-pointer", row.original.status === "cancelled" && "text-muted-foreground")}
               >
                 {row.getVisibleCells().map((cell) => {
                   const meta = cell.column.columnDef.meta as ColumnMeta | undefined;

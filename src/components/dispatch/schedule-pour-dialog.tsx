@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,7 @@ import {
   MIX_OPTIONS,
   POUR_TYPE_OPTIONS,
   formatClock,
+  normalizeClock,
   parseClock,
   type NewOrderInput,
   type Placement,
@@ -26,47 +27,18 @@ import {
   type PlantId,
   type PourType,
 } from "@/lib/dispatch";
+import {
+  BATCH_LEAD_MIN,
+  POUR_FIELDS,
+  lastArrival,
+  parseDecimal,
+  validatePour,
+  type PourField,
+  type PourValues,
+} from "@/lib/validation";
 
-interface Values {
-  customer: string;
-  siteAddress: string;
-  plantId: PlantId;
-  pourType: PourType;
-  mixCode: string;
-  placement: Placement;
-  volume: string;
-  start: string;
-}
-
-type FieldName = "customer" | "siteAddress" | "volume" | "start";
-const ORDER: FieldName[] = ["customer", "siteAddress", "volume", "start"];
-
-const LAST_START = 18 * 60;
-const BATCH_LEAD_MIN = 30;
-
-export function validatePour(name: FieldName, v: Values, clock: number): string | null {
-  switch (name) {
-    case "customer":
-      return v.customer.trim().length < 2 ? "Enter the customer's name." : null;
-    case "siteAddress":
-      return v.siteAddress.trim().length < 5 ? "Enter the site address so the driver can find it." : null;
-    case "volume": {
-      if (!v.volume.trim()) return "Enter the volume in cubic metres.";
-      const n = Number(v.volume);
-      if (!Number.isFinite(n)) return "Use numbers only, for example 24 or 24.5.";
-      if (n < 1 || n > 200) return "Enter a volume between 1 and 200 m³.";
-      return null;
-    }
-    case "start": {
-      const t = parseClock(v.start);
-      const earliest = clock + BATCH_LEAD_MIN;
-      if (t === null) return "Enter a start time, for example 13:30.";
-      if (t < earliest) return `Pick ${formatClock(earliest)} or later: the plant needs 30 min to batch the first load.`;
-      if (t > LAST_START) return "The last start of the day is 18:00.";
-      return null;
-    }
-  }
-}
+/** How long the sample pretends the server takes to book a pour. */
+const SAVE_DELAY_MS = 700;
 
 export function SchedulePourDialog({
   open,
@@ -75,15 +47,53 @@ export function SchedulePourDialog({
   defaultPlant,
   clock,
   onCreate,
+  onCloseAutoFocus,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   plants: Plant[];
+  /** The plant the board shows; read each time the dialog opens. */
   defaultPlant: PlantId;
   clock: number;
   onCreate: (input: NewOrderInput) => void;
+  onCloseAutoFocus?: (event: Event) => void;
 }) {
-  const initial: Values = {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
+        onCloseAutoFocus={onCloseAutoFocus}
+      >
+        {/* The form lives inside the content, which unmounts on close: every open starts fresh. */}
+        <SchedulePourForm
+          open={open}
+          plants={plants}
+          defaultPlant={defaultPlant}
+          clock={clock}
+          onCreate={onCreate}
+          onCancel={() => onOpenChange(false)}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SchedulePourForm({
+  open,
+  plants,
+  defaultPlant,
+  clock,
+  onCreate,
+  onCancel,
+}: {
+  open: boolean;
+  plants: Plant[];
+  defaultPlant: PlantId;
+  clock: number;
+  onCreate: (input: NewOrderInput) => void;
+  onCancel: () => void;
+}) {
+  const [values, setValues] = useState<PourValues>(() => ({
     customer: "",
     siteAddress: "",
     plantId: defaultPlant,
@@ -92,155 +102,169 @@ export function SchedulePourDialog({
     placement: "Chute",
     volume: "",
     start: "",
-  };
-  const [values, setValues] = useState<Values>(initial);
-  const [touched, setTouched] = useState<Partial<Record<FieldName, boolean>>>({});
+  }));
+  const [touched, setTouched] = useState<Partial<Record<PourField, boolean>>>({});
   const [submitting, setSubmitting] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const timer = useRef<number | undefined>(undefined);
 
-  const errorFor = (name: FieldName) => (touched[name] ? validatePour(name, values, clock) : null);
-  const set = <K extends keyof Values>(key: K, value: Values[K]) => setValues((v) => ({ ...v, [key]: value }));
-  const blur = (name: FieldName) => () => setTouched((t) => ({ ...t, [name]: true }));
+  // Cancel, Esc or the close button while "Scheduling…" really cancels: the pending save never lands.
+  useEffect(() => {
+    if (!open) window.clearTimeout(timer.current);
+  }, [open]);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  const volume = Number(values.volume);
-  const loads = Number.isFinite(volume) && volume > 0 ? Math.ceil(volume / LOAD_SIZE_M3) : null;
+  const errorFor = (name: PourField) => (touched[name] ? validatePour(name, values, clock) : null);
+  const set = <K extends keyof PourValues>(key: K, value: PourValues[K]) => setValues((v) => ({ ...v, [key]: value }));
+  const blur = (name: PourField) => setTouched((t) => ({ ...t, [name]: true }));
 
-  function reset() {
-    setValues(initial);
-    setTouched({});
-    setSubmitting(false);
-  }
+  const volume = parseDecimal(values.volume);
+  const loads = volume !== null && volume > 0 ? Math.ceil(volume / LOAD_SIZE_M3) : null;
+  const start = parseClock(values.start);
+  const volumeHint =
+    loads && !errorFor("volume")
+      ? `${loads} ${loads === 1 ? "load" : "loads"} of up to 8 m³${
+          start !== null && volume !== null ? ` · last truck about ${formatClock(lastArrival(start, volume, values.placement))}` : ""
+        }`
+      : "Up to 8 m³ per truck";
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
+    const normalized = { ...values, start: normalizeClock(values.start) };
+    setValues(normalized);
     setTouched({ customer: true, siteAddress: true, volume: true, start: true });
-    const firstInvalid = ORDER.find((name) => validatePour(name, values, clock));
+    const firstInvalid = POUR_FIELDS.find((name) => validatePour(name, normalized, clock));
     if (firstInvalid) {
       formRef.current?.querySelector<HTMLElement>(`#pour-${firstInvalid}`)?.focus();
       return;
     }
     setSubmitting(true);
-    window.setTimeout(() => {
+    timer.current = window.setTimeout(() => {
       onCreate({
-        plantId: values.plantId,
-        customer: values.customer.trim(),
-        siteAddress: values.siteAddress.trim(),
-        pourType: values.pourType,
-        mixCode: values.mixCode,
-        placement: values.placement,
-        volumeM3: Math.round(Number(values.volume) * 2) / 2,
-        scheduledStart: parseClock(values.start)!,
+        plantId: normalized.plantId,
+        customer: normalized.customer.trim(),
+        siteAddress: normalized.siteAddress.trim(),
+        pourType: normalized.pourType,
+        mixCode: normalized.mixCode,
+        placement: normalized.placement,
+        volumeM3: Math.round(parseDecimal(normalized.volume)! * 2) / 2,
+        scheduledStart: parseClock(normalized.start)!,
         notes: `Booked from the dispatch board at ${formatClock(clock)}.`,
       });
-      reset();
-    }, 700);
+    }, SAVE_DELAY_MS);
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) reset();
-        onOpenChange(next);
-      }}
-    >
-      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">Schedule pour</DialogTitle>
-          <DialogDescription>
-            Books the pour for today. Trucks can be assigned right after, from the order.
-          </DialogDescription>
-        </DialogHeader>
-        <form ref={formRef} onSubmit={submit} noValidate className="grid gap-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="pour-customer" label="Customer" error={errorFor("customer")} className="sm:col-span-2">
-              <Input
-                className="h-9"
-                autoComplete="off"
-                value={values.customer}
-                onChange={(e) => set("customer", e.target.value)}
-                onBlur={blur("customer")}
-              />
-            </Field>
-            <Field id="pour-siteAddress" label="Site address" error={errorFor("siteAddress")} className="sm:col-span-2">
-              <Input
-                className="h-9"
-                autoComplete="off"
-                value={values.siteAddress}
-                onChange={(e) => set("siteAddress", e.target.value)}
-                onBlur={blur("siteAddress")}
-              />
-            </Field>
-            <Field
-              id="pour-volume"
-              label="Volume"
-              unitLabel="cubic metres"
-              error={errorFor("volume")}
-              hint={loads && !errorFor("volume") ? `${loads} ${loads === 1 ? "load" : "loads"} of up to 8 m³` : "Up to 8 m³ per truck"}
-            >
-              <UnitInput
-                unit="m³"
-                className="h-9"
-                value={values.volume}
-                onChange={(e) => set("volume", e.target.value)}
-                onBlur={blur("volume")}
-              />
-            </Field>
-            <Field
-              id="pour-start"
-              label="First truck on site"
-              error={errorFor("start")}
-              hint={`24-hour time, ${formatClock(clock + BATCH_LEAD_MIN)} or later`}
-            >
-              <Input
-                className="h-9 font-mono tabular"
-                inputMode="numeric"
-                value={values.start}
-                onChange={(e) => set("start", e.target.value)}
-                onBlur={blur("start")}
-              />
-            </Field>
-            <SelectField
-              id="pour-plant"
-              label="Plant"
-              value={values.plantId}
-              onChange={(v) => set("plantId", v as PlantId)}
-              options={plants.map((p) => ({ value: p.id, label: p.name }))}
+    <form ref={formRef} onSubmit={submit} noValidate className="flex min-h-0 flex-1 flex-col">
+      <DialogHeader className="shrink-0 px-4 pt-4 pb-3 pr-12">
+        <DialogTitle className="text-lg font-semibold">Schedule pour</DialogTitle>
+        <DialogDescription>Books the pour for today. Trucks can be assigned right after, from the order.</DialogDescription>
+      </DialogHeader>
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-1 pb-4">
+        <fieldset disabled={submitting} className="m-0 grid min-w-0 gap-4 border-0 p-0 sm:grid-cols-2">
+          <legend className="sr-only">Pour details</legend>
+          <Field id="pour-customer" label="Customer" error={errorFor("customer")} className="min-w-0 sm:col-span-2">
+            <Input
+              className="h-9 max-md:h-11"
+              autoComplete="off"
+              value={values.customer}
+              onChange={(e) => set("customer", e.target.value)}
+              onBlur={() => blur("customer")}
             />
-            <SelectField
-              id="pour-type"
-              label="Pour type"
-              value={values.pourType}
-              onChange={(v) => set("pourType", v as PourType)}
-              options={POUR_TYPE_OPTIONS.map((p) => ({ value: p, label: p }))}
+          </Field>
+          <Field id="pour-siteAddress" label="Site address" error={errorFor("siteAddress")} className="min-w-0 sm:col-span-2">
+            <Input
+              className="h-9 max-md:h-11"
+              autoComplete="off"
+              value={values.siteAddress}
+              onChange={(e) => set("siteAddress", e.target.value)}
+              onBlur={() => blur("siteAddress")}
             />
-            <SelectField
-              id="pour-mix"
-              label="Mix"
-              value={values.mixCode}
-              onChange={(v) => set("mixCode", v)}
-              options={MIX_OPTIONS.map((m) => ({ value: m.code, label: m.label }))}
+          </Field>
+          <Field
+            id="pour-volume"
+            label="Volume"
+            unitLabel="cubic metres"
+            error={errorFor("volume")}
+            hint={volumeHint}
+            className="min-w-0"
+          >
+            <UnitInput
+              unit="m³"
+              className="h-9 max-md:h-11"
+              value={values.volume}
+              onChange={(e) => set("volume", e.target.value)}
+              onBlur={() => blur("volume")}
             />
-            <SelectField
-              id="pour-placement"
-              label="Placement"
-              value={values.placement}
-              onChange={(v) => set("placement", v as Placement)}
-              options={(["Chute", "Pump", "Buggy"] as const).map((p) => ({ value: p, label: p }))}
+          </Field>
+          <Field
+            id="pour-start"
+            label="First truck on site"
+            error={errorFor("start")}
+            hint={`24-hour time, ${formatClock(clock + BATCH_LEAD_MIN)} or later. 1330 works too.`}
+            className="min-w-0"
+          >
+            <Input
+              className="h-9 font-mono tabular max-md:h-11"
+              inputMode="numeric"
+              autoComplete="off"
+              value={values.start}
+              onChange={(e) => set("start", e.target.value)}
+              onBlur={() => {
+                set("start", normalizeClock(values.start));
+                blur("start");
+              }}
             />
-          </div>
-          <DialogFooter className="mt-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={submitting} aria-busy={submitting} className="min-w-36">
-              {submitting && <LoaderCircle className="animate-spin" aria-hidden />}
-              {submitting ? "Scheduling…" : "Schedule pour"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+          </Field>
+          <SelectField
+            id="pour-plant"
+            label="Plant"
+            value={values.plantId}
+            onChange={(v) => set("plantId", v as PlantId)}
+            options={plants.map((p) => ({ value: p.id, label: p.name }))}
+          />
+          <SelectField
+            id="pour-type"
+            label="Pour type"
+            value={values.pourType}
+            onChange={(v) => set("pourType", v as PourType)}
+            options={POUR_TYPE_OPTIONS.map((p) => ({ value: p, label: p }))}
+          />
+          <SelectField
+            id="pour-mix"
+            label="Mix"
+            value={values.mixCode}
+            onChange={(v) => set("mixCode", v)}
+            options={MIX_OPTIONS.map((m) => ({ value: m.code, label: m.label }))}
+          />
+          <SelectField
+            id="pour-placement"
+            label="Placement"
+            value={values.placement}
+            onChange={(v) => set("placement", v as Placement)}
+            options={(["Chute", "Pump", "Buggy"] as const).map((p) => ({ value: p, label: p }))}
+          />
+        </fieldset>
+      </div>
+      <DialogFooter className="mx-0 mb-0 shrink-0">
+        <Button
+          type="button"
+          variant="ghost"
+          className="max-md:h-11"
+          onClick={() => {
+            window.clearTimeout(timer.current);
+            onCancel();
+          }}
+        >
+          Cancel
+        </Button>
+        <Button type="submit" disabled={submitting} aria-busy={submitting} className="min-w-36 max-md:h-11">
+          {submitting && <LoaderCircle className="animate-spin" aria-hidden />}
+          {submitting ? "Scheduling…" : "Schedule pour"}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }
 
@@ -258,12 +282,12 @@ function SelectField({
   options: { value: string; label: string }[];
 }) {
   return (
-    <div className="grid content-start gap-1.5">
+    <div className="grid min-w-0 content-start gap-1.5">
       <label htmlFor={id} className="text-sm font-medium">
         {label}
       </label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger id={id} className="h-9 w-full">
+        <SelectTrigger id={id} className="w-full">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
