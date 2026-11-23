@@ -23,14 +23,16 @@ export function isClosed(order: Order): boolean {
 
 export function getRisk(order: Order, clock: number): Risk | null {
   if (isClosed(order)) return null;
-  if (order.delayMin >= LATE_AFTER_MIN) {
+  const projected = order.status === "scheduled";
+  const d = order.delayMin;
+  if (d >= LATE_AFTER_MIN) {
     return {
       level: "late",
-      minutes: order.delayMin,
-      reason:
-        order.status === "scheduled"
-          ? `First truck projected ${order.delayMin} min late`
-          : `Next load is ${order.delayMin} min behind plan`,
+      minutes: d,
+      reason: projected
+        ? `First truck is projected ${d} min late: no truck is back at the plant in time.`
+        : `The next load is ${d} min behind plan.`,
+      short: projected ? `Projected ${d} min late` : `Late · ${d} min behind`,
     };
   }
   const startsIn = order.scheduledStart - clock;
@@ -40,18 +42,19 @@ export function getRisk(order: Order, clock: number): Risk | null {
       minutes: Math.max(0, startsIn),
       reason:
         startsIn > 0
-          ? `Starts in ${startsIn} min with no truck assigned`
-          : "Start time has passed with no truck assigned",
+          ? `Starts in ${startsIn} min and no truck is assigned.`
+          : "The start time has passed and no truck is assigned.",
+      short: startsIn > 0 ? `No truck · starts in ${startsIn} min` : "No truck · start passed",
     };
   }
-  if (order.delayMin >= SLIPPING_AFTER_MIN) {
+  if (d >= SLIPPING_AFTER_MIN) {
     return {
       level: "at_risk",
-      minutes: order.delayMin,
-      reason:
-        order.status === "scheduled"
-          ? `First truck projected ${order.delayMin} min late`
-          : `Spacing is slipping: next load ${order.delayMin} min behind plan`,
+      minutes: d,
+      reason: projected
+        ? `First truck is projected ${d} min late.`
+        : `Spacing is slipping: the next load is ${d} min behind plan.`,
+      short: projected ? `Projected ${d} min late` : `${d} min behind plan`,
     };
   }
   return null;

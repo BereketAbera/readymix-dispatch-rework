@@ -104,6 +104,8 @@ export interface Truck {
   capacityM3: number;
   status: TruckStatus;
   orderId: string | null;
+  /** When a busy truck is expected back at its plant, minutes after midnight. */
+  backAt: number | null;
   note: string | null;
 }
 
@@ -125,5 +127,8 @@ export type PlantFilter = PlantId | "all";
 export interface Risk {
   level: "late" | "at_risk";
   minutes: number;
+  /** Full sentence for the detail sheet. */
   reason: string;
+  /** A few words for a table cell or card. */
+  short: string;
 }

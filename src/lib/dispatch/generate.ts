@@ -486,6 +486,7 @@ export function generateDispatchDay({
       const outNote = OUT_OF_SERVICE[unit];
       let status: Truck["status"] = outNote ? "out_of_service" : "available";
       let orderId: string | null = null;
+      let backAt: number | null = null;
       if (!outNote) {
         for (const o of orders) {
           for (const l of o.loads) {
@@ -493,6 +494,7 @@ export function generateDispatchDay({
             const back = l.times.returned + WASHOUT_MIN + o.travelMin;
             if (l.times.batched <= clock && clock < back) {
               orderId = o.id;
+              backAt = back;
               status =
                 l.stage === "batched" || l.stage === "loaded"
                   ? "loading"
@@ -513,10 +515,75 @@ export function generateDispatchDay({
         capacityM3: unit.endsWith("1") || unit.endsWith("5") ? 10 : 8,
         status,
         orderId,
+        backAt,
         note: outNote ?? null,
       });
     }
   }
 
   return { date, clock, company: COMPANY, plants: PLANTS, trucks, orders };
+}
+
+/** Distinct mixes offered when scheduling a pour. */
+export const MIX_OPTIONS: Mix[] = Array.from(
+  new Map(Object.values(POUR_PROFILES).flatMap((p) => p.mixes).map((m) => [m.code, m])).values(),
+).sort((a, b) => a.strengthMpa - b.strengthMpa || a.airPct - b.airPct);
+
+export const POUR_TYPE_OPTIONS = Object.keys(POUR_PROFILES) as PourType[];
+
+export interface NewOrderInput {
+  plantId: PlantId;
+  customer: string;
+  siteAddress: string;
+  pourType: PourType;
+  mixCode: string;
+  placement: Placement;
+  volumeM3: number;
+  scheduledStart: number;
+  notes?: string;
+}
+
+/** A freshly booked pour: planned loads, no trucks yet. */
+export function createOrder(input: NewOrderInput, sequence: number): Order {
+  const id = `ord-new-${sequence}`;
+  const mixChoice = MIX_OPTIONS.find((m) => m.code === input.mixCode) ?? MIX_OPTIONS[0];
+  const spacingMin = input.placement === "Pump" ? 20 : input.placement === "Buggy" ? 35 : 25;
+  const travelMin = 20;
+  const count = Math.ceil(input.volumeM3 / LOAD_SIZE_M3);
+  const loads: Load[] = Array.from({ length: count }, (_, i) => {
+    const volume = i === count - 1 ? input.volumeM3 - LOAD_SIZE_M3 * (count - 1) : LOAD_SIZE_M3;
+    const arrival = input.scheduledStart + i * spacingMin;
+    return {
+      id: `${id}-L${i + 1}`,
+      index: i + 1,
+      ticket: String(419000 + sequence * 20 + i),
+      volumeM3: volume,
+      truckId: null,
+      plannedArrival: arrival,
+      times: buildTimes(arrival, travelMin, arrival + (i === 0 ? 8 : 3), dischargeMinutes(input.placement, volume)),
+      stage: "pending",
+      delayMin: 0,
+    };
+  });
+  return {
+    id,
+    number: `PRM-${24140 + sequence}`,
+    plantId: input.plantId,
+    customer: input.customer,
+    siteAddress: input.siteAddress,
+    mix: mixChoice,
+    pourType: input.pourType,
+    placement: input.placement,
+    volumeM3: input.volumeM3,
+    scheduledStart: input.scheduledStart,
+    spacingMin,
+    travelMin,
+    status: "scheduled",
+    loads,
+    loadsTotal: count,
+    loadsDelivered: 0,
+    truckIds: [],
+    delayMin: 0,
+    notes: input.notes ?? "",
+  };
 }

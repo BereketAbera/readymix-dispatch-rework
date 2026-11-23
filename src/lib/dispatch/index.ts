@@ -10,8 +10,12 @@ export {
   COMPANY,
   LOAD_SIZE_M3,
   LOAD_STAGES,
+  MIX_OPTIONS,
   PLANTS,
+  POUR_TYPE_OPTIONS,
+  createOrder,
   generateDispatchDay,
+  type NewOrderInput,
 } from "./generate";
 
 /** Today's sample board, dated to the current day in America/Regina. */
