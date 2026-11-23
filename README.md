@@ -58,7 +58,7 @@ The field screens (driver and QC tech) would follow as their own set.
 
 ## Data
 
-`src/lib/dispatch/generate.ts` builds one sample day from a fixed seed: Tuesday 9 June 2026, shown as of 09:42. A June weekday keeps the work in season and the clock never runs ahead of the reader. There are 3 plants, 18 trucks and 40 orders, and every load has batched, loaded, en route, on site, pouring and washout times. Trucks are handed out in batching order, so no truck is ever on two loads at once; delays come from truck shortages plus two scripted incidents. Changes made on the board (assign, hold, release, cancel, book) stay in the browser tab until it is reloaded.
+`src/lib/dispatch/generate.ts` builds one sample day from a fixed seed: Tuesday 9 June 2026, shown as of 09:42. A June weekday keeps the work in season and the clock never runs ahead of the reader. There are 3 plants, 18 trucks and 40 orders, and every load has batched, loaded, en route, on site, pouring and washout times. Trucks are handed out in batching order, so no truck is ever on two loads at once; delays come from truck shortages plus two scripted incidents. An order is at risk from 5 min behind plan and late from 15; one with no truck is at risk from 60 min before its start. Those three numbers are constants at the top of `src/lib/dispatch/derive.ts`, and the overview draws its threshold strip from them. Changes made on the board (assign, hold, release, cancel, book) stay in the browser tab until it is reloaded.
 
 ## Run it
 

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { DemoBar } from "@/components/demo-bar";
+import { RiskStrip } from "@/components/risk-strip";
 import { SiteFooter } from "@/components/site-footer";
 import { CHANGES } from "@/content/changes";
 
@@ -62,11 +63,14 @@ const STACK: { title: string; text: string; changes: number[] }[] = [
   { title: "Phone cards and width-aware columns", text: "Cards below 768 px, columns that follow the table’s width, 44 px tap targets on phones.", changes: [8] },
 ];
 
+/** The question the threshold strip answers for now. */
+const HOW_LATE = "How late is late for your customers: 10, 15 or 20 minutes behind?";
+
 const QUESTIONS = [
   "Who books pours, and who assigns trucks? If an order desk books, Schedule pour moves to their screen and Assign takes its place here.",
   "When a driver or a customer calls, what do they give you first: the customer, the site, a ticket or a truck number?",
   "How many plants does one dispatcher watch, and do trucks move between plants during the day?",
-  "How late is late for your customers: 10, 15 or 20 minutes behind?",
+  HOW_LATE,
   "What do you check on a phone in the yard, and what waits until you are back at the desk?",
   "When a pour is held halfway, who calls whom, and what gets invoiced?",
 ];
@@ -242,7 +246,10 @@ export default function Home() {
           </h2>
           <ul className="mt-4 grid list-disc gap-2 pl-5 text-[15px] leading-relaxed marker:text-muted-foreground">
             {QUESTIONS.map((q) => (
-              <li key={q}>{q}</li>
+              <li key={q}>
+                {q}
+                {q === HOW_LATE && <RiskStrip className="mt-3 mb-2" />}
+              </li>
             ))}
           </ul>
         </section>
