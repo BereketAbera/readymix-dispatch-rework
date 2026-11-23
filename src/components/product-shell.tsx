@@ -8,6 +8,7 @@ import {
   Truck,
   type LucideIcon,
 } from "lucide-react";
+import { MixerTruck } from "@/components/glyphs";
 import { cn } from "@/lib/utils";
 
 const PLACEHOLDERS: { label: string; icon: LucideIcon }[] = [
@@ -17,16 +18,17 @@ const PLACEHOLDERS: { label: string; icon: LucideIcon }[] = [
   { label: "Fleet", icon: Truck },
 ];
 
+/** The fictional company's mark: a mixer truck on a yellow tile, drawn like src/app/icon.svg. */
 export function BrandMark({ className }: { className?: string }) {
   return (
     <span
       aria-hidden
       className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-md bg-amber-400 font-mono text-[13px] font-bold text-zinc-900",
+        "flex size-8 shrink-0 items-center justify-center rounded-[7px] bg-brand text-brand-foreground",
         className,
       )}
     >
-      PR
+      <MixerTruck className="size-[27px]" strokeWidth={2.3} />
     </span>
   );
 }

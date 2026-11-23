@@ -1,1 +1,49 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="#fbbf24"/><text x="16" y="21.5" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="14" font-weight="700" fill="#18181b">PR</text></svg>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="32"
+   height="32"
+   viewBox="0 0 32 32"
+   version="1.1"
+   id="svg5"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs5" />
+  <rect
+     width="32"
+     height="32"
+     rx="7"
+     fill="#f0b81c"
+     id="rect1" />
+  <g
+     transform="translate(2.43 2.32) scale(1.13)"
+     fill="none"
+     stroke="#14191f"
+     stroke-width="2.3"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="g5">
+    <path
+       d="M2.78 6.78Q5.6 5.33 7.99 5.84A6 3.35 12 0 1 6.6 12.4Q4.2 11.89 2.22 9.42Z"
+       id="path1" />
+    <path
+       d="M7.46 5.75L8.45 12.62"
+       id="path2" />
+    <path
+       d="M8.5 16.5H15.1"
+       id="path3" />
+    <path
+       d="M15.1 16.5V10.2a1 1 0 0 1 1-1H18.5a1 1 0 0 1 .78.37l2.3 2.9a1 1 0 0 1 .22.62V15.5a1 1 0 0 1-1 1h-.6"
+       id="path4" />
+    <circle
+       cx="6.5"
+       cy="16.5"
+       r="2"
+       id="circle4" />
+    <circle
+       cx="17.8"
+       cy="16.5"
+       r="2"
+       id="circle5" />
+  </g>
+</svg>
