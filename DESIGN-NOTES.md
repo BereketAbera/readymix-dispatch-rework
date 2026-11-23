@@ -1,8 +1,9 @@
 # Design notes
 
-Four visual changes from one craft pass over the sample, each with the reason it is there. Everything drawn is
-made by small Python scripts in `design/` (standard library only) and exported with the Inkscape command line, so
-it can be rebuilt and changed like code.
+Four visual changes from one craft pass over the sample, each with the reason it is there. The mark, the two
+status glyphs, the icons and the link image are made by small Python scripts in `design/` (standard library only)
+and exported with the Inkscape command line, so they can be rebuilt and changed like code. The threshold strip is
+a React component instead; change 3 says why.
 
 ![The mark at 16, 32 and 180 px, and the two status glyphs at 14 and 28 px](design/previews/sizes.png)
 

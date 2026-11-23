@@ -2,8 +2,8 @@
 """Packs the mark's 16, 32 and 48 px PNG exports into one favicon.ico.
 
 Older Safari versions and many link previewers ask for /favicon.ico and ignore the
-SVG icon; today that request is a 404. An .ico file may hold PNG images as they are,
-so this only writes the header and the directory in front of them.
+SVG icon. An .ico file may hold PNG images as they are, so this only writes the
+header and the directory in front of them.
 
 Usage: python3 design/favicon_ico.py OUT.ico IN-16.png IN-32.png IN-48.png
 """
