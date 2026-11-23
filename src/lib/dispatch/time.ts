@@ -1,16 +1,4 @@
-export const TIME_ZONE = "America/Regina";
-
-/** Today's date in America/Regina as YYYY-MM-DD. */
-export function todayInRegina(now: Date = new Date()): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    timeZone: TIME_ZONE,
-  }).format(now);
-}
-
-/** "Mon, Nov 23" for a YYYY-MM-DD date. */
+/** "Tue, Jun 9" for a YYYY-MM-DD date. */
 export function formatDayLabel(isoDate: string): string {
   const [y, m, d] = isoDate.split("-").map(Number);
   // Noon UTC keeps the calendar day stable in any time zone.
@@ -31,14 +19,32 @@ export function formatClock(minutes: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-/** "HH:MM" to minutes after midnight, or null if it is not a valid time. */
+/**
+ * Reads a time the way people type it and returns minutes after midnight, or
+ * null. A phone's number pad has no colon, so "1330" and "930" must work as
+ * well as "13:30", "13.30", "13 30", "13h30", "9", "1:30 pm" and "1pm".
+ */
 export function parseClock(value: string): number | null {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  const text = value.trim().toLowerCase().replace(/\s+/g, " ");
+  const match = /^(\d{1,2})(?:[:.h ]?(\d{2}))? ?([ap])?\.?m?\.?$/.exec(text);
   if (!match) return null;
-  const h = Number(match[1]);
-  const m = Number(match[2]);
-  if (h > 23 || m > 59) return null;
+  let h = Number(match[1]);
+  const m = match[2] === undefined ? 0 : Number(match[2]);
+  const meridiem = match[3];
+  if (m > 59) return null;
+  if (meridiem) {
+    if (h < 1 || h > 12) return null;
+    if (meridiem === "a" && h === 12) h = 0;
+    if (meridiem === "p" && h < 12) h += 12;
+  }
+  if (h > 23) return null;
   return h * 60 + m;
+}
+
+/** "1330" becomes "13:30"; text that is not a time is returned unchanged. */
+export function normalizeClock(value: string): string {
+  const minutes = parseClock(value);
+  return minutes === null ? value : formatClock(minutes);
 }
 
 /** "in 25 min", "in 2 h 5 min", "12 min ago". */

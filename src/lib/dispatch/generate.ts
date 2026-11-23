@@ -1,3 +1,4 @@
+import { deriveOrderStatus } from "./derive";
 import { createRng, type Rng } from "./random";
 import type {
   DispatchDay,
@@ -15,7 +16,13 @@ import type {
 
 export const COMPANY = "Prairie Ready-Mix (fictional)";
 export const DEFAULT_SEED = 2588;
-/** The board is shown as of 09:42 Regina time, mid-morning on a busy day. */
+/**
+ * One fixed, labelled sample day in the building season (a Tuesday in June),
+ * so the board never shows a snapshot from the future, a full schedule on a
+ * Sunday or sidewalks in a prairie November.
+ */
+export const SAMPLE_DATE = "2026-06-09";
+/** The board is shown as of 09:42, mid-morning on a busy day. */
 export const BOARD_CLOCK = 9 * 60 + 42;
 export const LOAD_SIZE_M3 = 8;
 
@@ -119,13 +126,13 @@ const POUR_WEIGHTS: [PourType, number][] = [
 const POUR_BAG: PourType[] = POUR_WEIGHTS.flatMap(([type, weight]) => Array<PourType>(weight).fill(type));
 
 const ROUTINE_NOTES = [
-  "Cold weather: hot water in the mix, blankets on site.",
+  "Hot afternoon forecast: retarder in the mix, keep the drum turning.",
   "Call the site super 30 min before the first truck.",
   "Washout in the bin by the north gate only.",
   "Pump on site 15 min before start.",
   "Gravel access road; keep trucks off the boulevard.",
   "Inspector booked for the first load.",
-  "Accelerator 1.5% per the customer's request.",
+  "Accelerator 1.5% per the customer’s request.",
   "",
   "",
   "",
@@ -183,6 +190,11 @@ function shuffle<T>(rng: Rng, items: readonly T[]): T[] {
 function dischargeMinutes(placement: Placement, volume: number): number {
   const perM3 = placement === "Pump" ? 2 : placement === "Chute" ? 2.5 : 4;
   return Math.round(volume * perM3);
+}
+
+/** Minutes between trucks for a newly booked pour. */
+export function spacingForPlacement(placement: Placement): number {
+  return placement === "Pump" ? 20 : placement === "Buggy" ? 35 : 25;
 }
 
 function spacingFor(rng: Rng, placement: Placement): number {
@@ -267,7 +279,7 @@ function applyScenarios(drafts: Draft[], clock: number) {
   });
   set(find("rgn", "13:00"), {
     forcedStatus: "cancelled",
-    notes: "Cancelled by the customer at 07:10: frost in the subgrade.",
+    notes: "Cancelled by the customer at 07:10: subgrade too wet after overnight rain.",
   });
 
   // Two pours already underway run into trouble on the load that is out now.
@@ -278,7 +290,6 @@ function applyScenarios(drafts: Draft[], clock: number) {
     placement: "Chute",
     volumeM3: 36,
     spacingMin: 25,
-    notes: "Load 3 held by a train at the Elevator Rd crossing.",
   });
   const slipping = find("sas", "08:30");
   set(slipping, {
@@ -294,6 +305,10 @@ function applyScenarios(drafts: Draft[], clock: number) {
     const loads = Math.ceil(d.volumeM3 / LOAD_SIZE_M3);
     const nextIndex = Math.min(loads - 1, Math.ceil((clock - d.scheduledStart) / d.spacingMin));
     d.incident = { loadIndex: nextIndex, minutes };
+  }
+  // The note names the load the incident actually delays.
+  if (late?.incident) {
+    late.notes = `Load ${late.incident.loadIndex + 1} held by a train at the Elevator Rd crossing.`;
   }
 }
 
@@ -315,16 +330,6 @@ function buildTimes(arrival: number, travel: number, pourStart: number, discharg
     pouring: pourStart,
     returned: pourStart + discharge,
   } satisfies Record<LoadStage, number>;
-}
-
-function deriveOrderStatus(loads: Load[]): OrderStatus {
-  if (loads.length === 0 || loads[0].stage === "pending") return "scheduled";
-  if (loads.every((l) => l.stage === "returned")) return "complete";
-  if (loads.some((l) => l.stage === "pouring" || l.stage === "returned")) return "pouring";
-  const first = loads[0].stage;
-  if (first === "batched" || first === "loaded") return "batching";
-  if (first === "en_route") return "en_route";
-  return "on_site";
 }
 
 const ARRIVING: Load["stage"][] = ["pending", "batched", "loaded", "en_route"];
@@ -547,7 +552,7 @@ export interface NewOrderInput {
 export function createOrder(input: NewOrderInput, sequence: number): Order {
   const id = `ord-new-${sequence}`;
   const mixChoice = MIX_OPTIONS.find((m) => m.code === input.mixCode) ?? MIX_OPTIONS[0];
-  const spacingMin = input.placement === "Pump" ? 20 : input.placement === "Buggy" ? 35 : 25;
+  const spacingMin = spacingForPlacement(input.placement);
   const travelMin = 20;
   const count = Math.ceil(input.volumeM3 / LOAD_SIZE_M3);
   const loads: Load[] = Array.from({ length: count }, (_, i) => {

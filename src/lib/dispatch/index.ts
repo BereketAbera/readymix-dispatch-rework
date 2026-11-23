@@ -1,5 +1,4 @@
-import { generateDispatchDay } from "./generate";
-import { todayInRegina } from "./time";
+import { SAMPLE_DATE, generateDispatchDay } from "./generate";
 import type { DispatchDay } from "./types";
 
 export * from "./types";
@@ -13,12 +12,14 @@ export {
   MIX_OPTIONS,
   PLANTS,
   POUR_TYPE_OPTIONS,
+  SAMPLE_DATE,
   createOrder,
   generateDispatchDay,
+  spacingForPlacement,
   type NewOrderInput,
 } from "./generate";
 
-/** Today's sample board, dated to the current day in America/Regina. */
-export function getDispatchDay(now: Date = new Date()): DispatchDay {
-  return generateDispatchDay({ date: todayInRegina(now) });
+/** The sample board: one fixed day, shown as of 09:42. */
+export function getDispatchDay(): DispatchDay {
+  return generateDispatchDay({ date: SAMPLE_DATE });
 }

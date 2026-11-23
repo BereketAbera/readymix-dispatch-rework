@@ -3,19 +3,26 @@ import {
   BOARD_CLOCK,
   LOAD_SIZE_M3,
   LOAD_STAGES,
+  SAMPLE_DATE,
+  activeLoads,
   assignTruck,
+  cancelOrder,
   computeKpis,
   filterOrders,
   formatClock,
   generateDispatchDay,
+  getDispatchDay,
   getRisk,
+  holdOrder,
+  hourlyVolume,
   isUnassigned,
-  todayInRegina,
+  matchesQuery,
+  releaseHold,
   viewCounts,
   type Order,
 } from "@/lib/dispatch";
 
-const day = generateDispatchDay({ date: "2026-11-23" });
+const day = generateDispatchDay({ date: SAMPLE_DATE });
 
 function order(patch: Partial<Order>): Order {
   return { ...day.orders[0], status: "scheduled", delayMin: 0, truckIds: ["T-101"], ...patch };
@@ -23,14 +30,16 @@ function order(patch: Partial<Order>): Order {
 
 describe("generateDispatchDay", () => {
   it("is deterministic for the same seed and date", () => {
-    const again = generateDispatchDay({ date: "2026-11-23" });
+    const again = generateDispatchDay({ date: SAMPLE_DATE });
     expect(again).toEqual(day);
-    const other = generateDispatchDay({ date: "2026-11-23", seed: 7 });
+    expect(getDispatchDay()).toEqual(day);
+    const other = generateDispatchDay({ date: SAMPLE_DATE, seed: 7 });
     expect(other.orders.map((o) => o.volumeM3)).not.toEqual(day.orders.map((o) => o.volumeM3));
   });
 
-  it("builds a full day: 3 plants, 18 trucks, 40 orders on the given date", () => {
-    expect(day.date).toBe("2026-11-23");
+  it("builds a full day: 3 plants, 18 trucks, 40 orders on the sample day, a June weekday", () => {
+    expect(day.date).toBe("2026-06-09");
+    expect(new Date(`${day.date}T12:00:00Z`).getUTCDay()).toBe(2);
     expect(day.plants).toHaveLength(3);
     expect(day.trucks).toHaveLength(18);
     expect(day.orders).toHaveLength(40);
@@ -171,6 +180,25 @@ describe("filters and saved views", () => {
     expect(filterOrders(day.orders, { plant: "all", view: "today", query: "no such site" }, clock)).toEqual([]);
   });
 
+  it("finds a job by load ticket (with or without #) and by placement", () => {
+    const target = day.orders.find((o) => o.loads.length > 1)!;
+    const ticket = target.loads[1].ticket;
+    expect(filterOrders(day.orders, { plant: "all", view: "today", query: ticket }, clock)).toEqual([target]);
+    expect(matchesQuery(target, `#${ticket}`)).toBe(true);
+    const pumps = filterOrders(day.orders, { plant: "all", view: "today", query: "pump" }, clock);
+    expect(pumps.length).toBeGreaterThan(0);
+    expect(pumps.every((o) => o.placement === "Pump")).toBe(true);
+  });
+
+  it("narrows by status, pour type and placement, and scopes the chip counts to them", () => {
+    const filter = { plant: "all" as const, statuses: ["pouring" as const], placements: ["Pump" as const] };
+    const list = filterOrders(day.orders, { ...filter, view: "today", query: "" }, clock);
+    expect(list.every((o) => o.status === "pouring" && o.placement === "Pump")).toBe(true);
+    expect(viewCounts(day.orders, filter, clock).today).toBe(list.length);
+    const walls = filterOrders(day.orders, { plant: "all", view: "today", query: "", pourTypes: ["Wall"] }, clock);
+    expect(walls.every((o) => o.pourType === "Wall")).toBe(true);
+  });
+
   it("chip counts agree with the filtered lists", () => {
     for (const plant of ["all", "rgn", "sas", "mjw"] as const) {
       const counts = viewCounts(day.orders, plant, clock);
@@ -192,10 +220,86 @@ describe("assignTruck", () => {
   });
 });
 
-describe("todayInRegina", () => {
-  it("uses Regina time (UTC-6, no daylight saving)", () => {
-    expect(todayInRegina(new Date("2026-11-24T03:30:00Z"))).toBe("2026-11-23");
-    expect(todayInRegina(new Date("2026-11-24T06:30:00Z"))).toBe("2026-11-24");
-    expect(todayInRegina(new Date("2026-07-01T05:59:00Z"))).toBe("2026-06-30");
+describe("scripted incidents", () => {
+  it("names the load the train actually delays", () => {
+    const late = day.orders.find((o) => o.notes.includes("held by a train"))!;
+    const n = Number(/Load (\d+) held/.exec(late.notes)![1]);
+    // The site is waiting for that load: it is the next one to arrive, and its delay is the order's.
+    const next = late.loads.find((l) => ["pending", "batched", "loaded", "en_route"].includes(l.stage))!;
+    expect(next.index).toBe(n);
+    expect(next.delayMin).toBe(late.delayMin);
+    expect(next.delayMin).toBeGreaterThanOrEqual(15);
+    expect(getRisk(late, day.clock)?.level).toBe("late");
+  });
+});
+
+describe("hold, release and cancel", () => {
+  const pouring = day.orders.find((o) => o.status === "pouring" && o.loads.some((l) => l.stage === "pending"))!;
+
+  it("brings a held pour back to Pouring, not Scheduled", () => {
+    const held = holdOrder(pouring);
+    expect(held.status).toBe("on_hold");
+    expect(getRisk(held, day.clock)).toBeNull();
+    const released = releaseHold(held);
+    expect(released.status).toBe("pouring");
+    expect(released.loads).toEqual(pouring.loads);
+    expect(getRisk(released, day.clock)).toEqual(getRisk(pouring, day.clock));
+  });
+
+  it("releases a hold on a pour that has not started to Scheduled", () => {
+    const held = day.orders.find((o) => o.status === "on_hold")!;
+    expect(releaseHold(held).status).toBe("scheduled");
+  });
+
+  it("cancels only the loads not yet batched and keeps the rest with their trucks", () => {
+    const cancelled = cancelOrder(pouring);
+    expect(cancelled.status).toBe("cancelled");
+    const out = pouring.loads.filter((l) => l.stage !== "pending");
+    expect(activeLoads(cancelled)).toEqual(out);
+    expect(cancelled.loadsDelivered).toBe(pouring.loadsDelivered);
+    for (const l of out) expect(cancelled.truckIds).toContain(l.truckId);
+  });
+
+  it("keeps delivered and out concrete in the KPIs after a cancel", () => {
+    const before = computeKpis(day, "all");
+    const orders = day.orders.map((o) => (o.id === pouring.id ? cancelOrder(o) : o));
+    const after = computeKpis(day, "all", orders);
+    const dropped = pouring.loads.filter((l) => l.stage === "pending").reduce((s, l) => s + l.volumeM3, 0);
+    expect(after.deliveredM3).toBe(before.deliveredM3);
+    expect(after.loadsEnRoute).toBe(before.loadsEnRoute);
+    expect(after.loadsOnSite).toBe(before.loadsOnSite);
+    expect(after.scheduledM3).toBeCloseTo(before.scheduledM3 - dropped, 5);
+  });
+
+  it("leaves complete orders alone", () => {
+    const done = day.orders.find((o) => o.status === "complete")!;
+    expect(cancelOrder(done)).toBe(done);
+    expect(holdOrder(done)).toBe(done);
+  });
+});
+
+describe("empty day", () => {
+  it("shows every truck in service as available when nothing is booked", () => {
+    const k = computeKpis(day, "all", []);
+    expect(k).toMatchObject({ scheduledM3: 0, deliveredM3: 0, loadsEnRoute: 0, late: 0, atRisk: 0 });
+    expect(k.trucksAvailable).toBe(k.trucksInService);
+    expect(k.trucksInService).toBe(17);
+  });
+});
+
+describe("hourly chart data", () => {
+  it("adds up to the scheduled and delivered m³ and covers 06:00 to 16:59 at least", () => {
+    const hours = hourlyVolume(day.orders, "all");
+    const k = computeKpis(day, "all");
+    expect(hours[0].hour).toBe(6);
+    expect(hours.at(-1)!.hour).toBeGreaterThanOrEqual(16);
+    expect(hours.reduce((s, h) => s + h.delivered + h.toCome, 0)).toBeCloseTo(k.scheduledM3, 5);
+    expect(hours.reduce((s, h) => s + h.delivered, 0)).toBeCloseTo(k.deliveredM3, 5);
+  });
+
+  it("filters the table to the pours due in a clicked hour", () => {
+    const tenOClock = filterOrders(day.orders, { plant: "all", view: "today", query: "", hour: 10 }, day.clock);
+    expect(tenOClock.length).toBeGreaterThan(0);
+    for (const o of tenOClock) expect(o.loads.some((l) => Math.floor(l.times.on_site / 60) === 10)).toBe(true);
   });
 });
