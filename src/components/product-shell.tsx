@@ -5,7 +5,6 @@ import {
   LayoutGrid,
   Lock,
   Receipt,
-  Truck,
   type LucideIcon,
 } from "lucide-react";
 import { MixerTruck } from "@/components/glyphs";
@@ -15,7 +14,7 @@ const PLACEHOLDERS: { label: string; icon: LucideIcon }[] = [
   { label: "Batches and tickets", icon: ClipboardList },
   { label: "Quality and lab", icon: FlaskConical },
   { label: "Invoicing", icon: Receipt },
-  { label: "Fleet", icon: Truck },
+  { label: "Fleet", icon: MixerTruck },
 ];
 
 /** The fictional company's mark: a mixer truck on a yellow tile, drawn like src/app/icon.svg. */
