@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { Order } from "@/lib/dispatch";
+import { activeLoads, type Order } from "@/lib/dispatch";
 
 export function LoadProgress({
   delivered,
@@ -33,14 +33,29 @@ export function LoadProgress({
 export function TruckChip({ unit, className }: { unit: string; className?: string }) {
   return (
     <span
+      data-slot="truck-chip"
       className={cn(
-        "inline-flex h-6 items-center rounded-md border border-slate-300 bg-white px-1.5 font-mono text-xs font-medium text-slate-800",
+        "inline-flex h-6 shrink-0 items-center rounded-md border border-slate-300 bg-white px-1.5 font-mono text-xs font-medium whitespace-nowrap text-slate-800",
         className,
       )}
     >
       {unit}
     </span>
   );
+}
+
+/** Loads delivered out of the loads that still count; a dash when a cancellation dropped them all. */
+export function OrderLoads({ order, className }: { order: Order; className?: string }) {
+  const total = activeLoads(order).length;
+  if (total === 0) {
+    return (
+      <span className={cn("text-sm text-muted-foreground", className)}>
+        <span aria-hidden>—</span>
+        <span className="sr-only">No loads</span>
+      </span>
+    );
+  }
+  return <LoadProgress delivered={order.loadsDelivered} total={total} className={className} />;
 }
 
 export function TruckChips({ order, max = 3 }: { order: Order; max?: number }) {
@@ -54,7 +69,7 @@ export function TruckChips({ order, max = 3 }: { order: Order; max?: number }) {
       );
     }
     return (
-      <span className="inline-flex h-6 items-center rounded-md border border-dashed border-amber-500 bg-amber-50 px-1.5 text-xs font-medium text-amber-900">
+      <span className="inline-flex h-6 items-center rounded-md border border-dashed border-amber-500 bg-amber-50 px-1.5 text-xs font-medium whitespace-nowrap text-amber-900">
         No truck
       </span>
     );
@@ -67,7 +82,7 @@ export function TruckChips({ order, max = 3 }: { order: Order; max?: number }) {
         <TruckChip key={t} unit={t} />
       ))}
       {extra > 0 && (
-        <span className="text-xs font-medium text-muted-foreground">
+        <span className="text-xs font-medium whitespace-nowrap text-muted-foreground">
           +{extra}
           <span className="sr-only"> more: {order.truckIds.slice(max).join(", ")}</span>
         </span>

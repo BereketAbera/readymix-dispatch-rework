@@ -1,6 +1,7 @@
 import {
   Ban,
   CircleCheck,
+  ClockAlert,
   CircleExclamationPoint,
   CirclePause,
   Clock,
@@ -84,6 +85,16 @@ export function RiskNote({ risk, className }: { risk: Risk; className?: string }
         <span className="sr-only">{late ? "Late: " : "At risk: "}</span>
         {risk.short}
       </span>
+    </span>
+  );
+}
+
+/** Partial data: flags a row whose position or ETA comes from a stale feed. */
+export function StaleNote({ text, className }: { text: string; className?: string }) {
+  return (
+    <span className={cn("inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap text-amber-800", className)}>
+      <ClockAlert className="size-3.5 shrink-0" aria-hidden />
+      {text}
     </span>
   );
 }

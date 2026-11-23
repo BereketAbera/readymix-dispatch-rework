@@ -9,6 +9,8 @@ import { MixLabel, TruckChip, TruckChips, formatM3 } from "@/components/dispatch
 import { RiskBadge, StatusBadge } from "@/components/dispatch/status";
 import {
   LOAD_STAGES,
+  activeLoads,
+  droppedLoads,
   formatClock,
   getRisk,
   isClosed,
@@ -20,13 +22,15 @@ import {
 } from "@/lib/dispatch";
 import { cn } from "@/lib/utils";
 
+export type OrderAction = "hold" | "release" | "cancel";
+
 const STAGE_LABEL: Record<LoadStage, string> = {
   batched: "Batched",
   loaded: "Loaded",
   en_route: "En route",
   on_site: "On site",
   pouring: "Pouring",
-  returned: "Washout / returned",
+  returned: "Washout",
 };
 
 function loadSummary(load: Load, clock: number): { text: string; tone: "done" | "live" | "late" | "plan" } {
@@ -52,41 +56,39 @@ function loadSummary(load: Load, clock: number): { text: string; tone: "done" | 
   }
 }
 
-function LoadTimeline({ order, clock }: { order: Order; clock: number }) {
+/**
+ * One card per load. In a wide sheet the six stages sit in one row under a
+ * shared header; in a narrow one (a phone) they wrap to two rows of three,
+ * each with its own label, so times never run together.
+ */
+function LoadTimeline({ loads, total, clock }: { loads: Load[]; total: number; clock: number }) {
   return (
     <div>
-      <div className="grid grid-cols-6 gap-1 px-2.5 pb-1.5 text-[11px] leading-tight font-medium text-muted-foreground" aria-hidden>
+      <div
+        className="hidden grid-cols-6 gap-1 px-2.5 pb-1.5 text-[11px] leading-tight font-medium text-muted-foreground @md:grid"
+        aria-hidden
+      >
         {LOAD_STAGES.map((s) => (
-          <span key={s}>
-            {s === "returned" ? (
-              <>
-                Washout/
-                <wbr />
-                returned
-              </>
-            ) : (
-              STAGE_LABEL[s]
-            )}
-          </span>
+          <span key={s}>{STAGE_LABEL[s]}</span>
         ))}
       </div>
       <ol className="grid gap-2">
-        {order.loads.map((load) => {
+        {loads.map((load) => {
           const reached = load.stage === "pending" || !load.truckId ? -1 : LOAD_STAGES.indexOf(load.stage);
           const summary = loadSummary(load, clock);
           return (
             <li key={load.id} className="rounded-lg border p-2.5" data-testid="load">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium">
+              <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                <p className="text-sm font-medium whitespace-nowrap">
                   Load {load.index}
                   <span className="font-normal text-muted-foreground">
                     {" "}
-                    of {order.loadsTotal} · {formatM3(load.volumeM3)} m³
+                    of {total} · {formatM3(load.volumeM3)}&nbsp;m³
                   </span>
                 </p>
                 <div className="flex items-center gap-1.5">
                   {load.truckId && <TruckChip unit={load.truckId} />}
-                  <span className="font-mono text-xs text-muted-foreground">#{load.ticket}</span>
+                  <span className="font-mono text-xs whitespace-nowrap text-muted-foreground">#{load.ticket}</span>
                 </div>
               </div>
               <p
@@ -100,7 +102,10 @@ function LoadTimeline({ order, clock }: { order: Order; clock: number }) {
               >
                 {summary.text}
               </p>
-              <ol className="mt-2 grid grid-cols-6 gap-1" aria-label={`Load ${load.index} timeline`}>
+              <ol
+                className="mt-2 grid grid-cols-3 gap-x-2 gap-y-2 @md:grid-cols-6 @md:gap-1"
+                aria-label={`Load ${load.index} timeline`}
+              >
                 {LOAD_STAGES.map((stage, i) => {
                   const done = i < reached || (i === reached && stage === "returned");
                   const current = i === reached && stage !== "returned";
@@ -116,9 +121,12 @@ function LoadTimeline({ order, clock }: { order: Order; clock: number }) {
                           !done && !current && "bg-slate-200",
                         )}
                       />
+                      <span className="mt-1 block text-[11px] leading-tight text-muted-foreground @md:hidden" aria-hidden>
+                        {STAGE_LABEL[stage]}
+                      </span>
                       <span
                         className={cn(
-                          "mt-1 block font-mono text-[11px] tabular",
+                          "block font-mono text-[11px] whitespace-nowrap tabular @md:mt-1",
                           !done && !current && "text-muted-foreground",
                           current && "font-semibold",
                         )}
@@ -164,7 +172,7 @@ function AssignTruck({
             Assign truck
           </label>
           <Select value={choice} onValueChange={setChoice}>
-            <SelectTrigger id={`${labelId}-trigger`} className="h-9 w-full" aria-labelledby={labelId}>
+            <SelectTrigger id={`${labelId}-trigger`} className="w-full" aria-labelledby={labelId}>
               <SelectValue placeholder="Choose a truck" />
             </SelectTrigger>
             <SelectContent>
@@ -180,7 +188,7 @@ function AssignTruck({
           </Select>
         </div>
         <Button
-          className="h-9"
+          className="h-9 max-md:h-11"
           disabled={!choice}
           onClick={() => {
             onAssign(choice);
@@ -200,9 +208,28 @@ function AssignTruck({
         ) : order.truckIds.length === 0 ? (
           "Choose a truck to enable Assign. Loads without a truck are shared across the trucks you add."
         ) : (
-          "Choose a truck to enable Assign. It joins this job's rotation."
+          "Choose a truck to enable Assign. It joins this job’s rotation."
         )}
       </p>
+    </div>
+  );
+}
+
+function CancelledLoads({ order, clock }: { order: Order; clock: number }) {
+  const kept = activeLoads(order);
+  const dropped = droppedLoads(order);
+  const droppedM3 = dropped.reduce((sum, l) => sum + l.volumeM3, 0);
+  const droppedText = `${dropped.length} ${dropped.length === 1 ? "load" : "loads"} not yet batched (${formatM3(droppedM3)} m³)`;
+  return (
+    <div className="grid gap-3">
+      <p className="text-sm text-muted-foreground">
+        {kept.length === 0
+          ? `Cancelled before any load was batched: ${droppedText} came off the schedule.`
+          : dropped.length > 0
+            ? `Cancelled. ${droppedText} came off the schedule; the loads below were already out and are delivered and invoiced.`
+            : "Cancelled. Every load was already out, so all of them are delivered and invoiced."}
+      </p>
+      {kept.length > 0 && <LoadTimeline loads={kept} total={order.loadsTotal} clock={clock} />}
     </div>
   );
 }
@@ -215,7 +242,8 @@ export function OrderSheet({
   open,
   onOpenChange,
   onAssign,
-  onSetStatus,
+  onAction,
+  onCloseAutoFocus,
 }: {
   order: Order | null;
   plants: Plant[];
@@ -224,28 +252,41 @@ export function OrderSheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAssign: (orderId: string, truckId: string) => void;
-  onSetStatus: (orderId: string, status: Order["status"]) => void;
+  onAction: (orderId: string, action: OrderAction) => void;
+  /** Where focus goes when the sheet closes; the board sends it back to the row that opened it. */
+  onCloseAutoFocus?: (event: Event) => void;
 }) {
   const [confirmCancel, setConfirmCancel] = useState(false);
+  // After "Keep order", focus goes back to the button that asked, not to the top of the sheet.
+  const [refocusCancel, setRefocusCancel] = useState(false);
   if (!order) return null;
   const risk = getRisk(order, clock);
   const plant = plants.find((p) => p.id === order.plantId);
   const closed = order.status === "complete" || order.status === "cancelled";
+  const loadsOut = order.loads.filter((l) => l.stage !== "pending" && l.stage !== "returned").length;
 
   return (
     <Sheet
       open={open}
       onOpenChange={(next) => {
-        if (!next) setConfirmCancel(false);
+        if (!next) {
+          setConfirmCancel(false);
+          setRefocusCancel(false);
+        }
         onOpenChange(next);
       }}
     >
-      <SheetContent side="right" className="w-full gap-0 p-0 sm:max-w-[540px]" data-testid="order-sheet">
+      <SheetContent
+        side="right"
+        className="gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-[540px]"
+        data-testid="order-sheet"
+        onCloseAutoFocus={onCloseAutoFocus}
+      >
         <SheetHeader className="gap-1.5 border-b px-5 pt-4 pb-4">
-          <p className="font-mono text-xs text-muted-foreground">
-            {order.number} · {plant?.name}
+          <p className="text-xs text-muted-foreground">
+            <span className="font-mono">{order.number}</span> · {plant?.name}
           </p>
-          <SheetTitle className="pr-8 text-lg leading-snug font-semibold">{order.customer}</SheetTitle>
+          <SheetTitle className="pr-10 text-lg leading-snug font-semibold">{order.customer}</SheetTitle>
           <SheetDescription>{order.siteAddress}</SheetDescription>
           <div className="flex flex-wrap items-center gap-1.5 pt-1">
             <StatusBadge status={order.status} />
@@ -253,7 +294,7 @@ export function OrderSheet({
           </div>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="@container flex-1 overflow-y-auto">
           {risk && (
             <p
               className={cn(
@@ -273,8 +314,8 @@ export function OrderSheet({
             <div>
               <dt className="text-xs text-muted-foreground">Volume</dt>
               <dd className="font-medium">
-                <span className="font-mono tabular">{formatM3(order.volumeM3)}</span> m³ in {order.loadsTotal}{" "}
-                {order.loadsTotal === 1 ? "load" : "loads"}
+                <span className="font-mono whitespace-nowrap tabular">{formatM3(order.volumeM3)}&nbsp;m³</span> in{" "}
+                {order.loadsTotal} {order.loadsTotal === 1 ? "load" : "loads"}
               </dd>
             </div>
             <div>
@@ -313,7 +354,12 @@ export function OrderSheet({
 
           {!closed && order.status !== "on_hold" && (
             <section className="border-t px-5 py-4" aria-label="Assign truck">
-              <AssignTruck order={order} trucks={trucks} onAssign={(truckId) => onAssign(order.id, truckId)} />
+              <AssignTruck
+                key={order.id}
+                order={order}
+                trucks={trucks}
+                onAssign={(truckId) => onAssign(order.id, truckId)}
+              />
             </section>
           )}
 
@@ -322,9 +368,9 @@ export function OrderSheet({
               Loads
             </h3>
             {order.status === "cancelled" ? (
-              <p className="text-sm text-muted-foreground">No loads: this order was cancelled.</p>
+              <CancelledLoads order={order} clock={clock} />
             ) : (
-              <LoadTimeline order={order} clock={clock} />
+              <LoadTimeline loads={order.loads} total={order.loadsTotal} clock={clock} />
             )}
           </section>
         </div>
@@ -332,42 +378,60 @@ export function OrderSheet({
         {!closed && (
           <SheetFooter className="flex-row flex-wrap items-center gap-2 border-t px-5 py-3">
             {confirmCancel ? (
-              <>
-                <p className="w-full text-sm">
-                  Cancel {order.number}? Loads already out will still be delivered and invoiced.
+              <div key="confirm" className="flex w-full flex-wrap items-center gap-2">
+                <p className="w-full text-sm" id="cancel-confirm-text">
+                  Cancel {order.number}?{" "}
+                  {loadsOut > 0
+                    ? `${loadsOut} ${loadsOut === 1 ? "load is" : "loads are"} already out and will still be delivered and invoiced; loads not yet batched come off the schedule.`
+                    : "No load has left the plant, so nothing is delivered or invoiced."}
                 </p>
                 <Button
-                  variant="destructive"
+                  variant="ghost"
+                  className="max-md:h-11"
+                  autoFocus
                   onClick={() => {
-                    onSetStatus(order.id, "cancelled");
+                    setConfirmCancel(false);
+                    setRefocusCancel(true);
+                  }}
+                >
+                  Keep order
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="ml-auto max-md:h-11"
+                  aria-describedby="cancel-confirm-text"
+                  onClick={() => {
+                    onAction(order.id, "cancel");
                     setConfirmCancel(false);
                   }}
                 >
                   Cancel order
                 </Button>
-                <Button variant="ghost" onClick={() => setConfirmCancel(false)}>
-                  Keep order
-                </Button>
-              </>
+              </div>
             ) : (
-              <>
+              <div key="actions" className="flex w-full flex-wrap items-center gap-2">
                 {order.status === "on_hold" ? (
-                  <Button variant="outline" onClick={() => onSetStatus(order.id, "scheduled")}>
+                  <Button variant="outline" className="max-md:h-11" onClick={() => onAction(order.id, "release")}>
                     <CirclePlay aria-hidden />
                     Release hold
                   </Button>
                 ) : (
                   !isClosed(order) && (
-                    <Button variant="outline" onClick={() => onSetStatus(order.id, "on_hold")}>
+                    <Button variant="outline" className="max-md:h-11" onClick={() => onAction(order.id, "hold")}>
                       <CirclePause aria-hidden />
                       Put on hold
                     </Button>
                   )
                 )}
-                <Button variant="ghost" className="ml-auto text-destructive hover:text-destructive" onClick={() => setConfirmCancel(true)}>
+                <Button
+                  variant="ghost"
+                  className="ml-auto text-destructive hover:text-destructive max-md:h-11"
+                  autoFocus={refocusCancel}
+                  onClick={() => setConfirmCancel(true)}
+                >
                   Cancel order…
                 </Button>
-              </>
+              </div>
             )}
           </SheetFooter>
         )}
