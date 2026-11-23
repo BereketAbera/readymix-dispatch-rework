@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /** Runs against a local production build, or against BASE_URL when it is set. */
-const baseURL = process.env.BASE_URL ?? "http://localhost:3100";
+const baseURL = process.env.BASE_URL ?? "http://localhost:3301";
 
 export default defineConfig({
   testDir: "e2e",
@@ -12,7 +12,7 @@ export default defineConfig({
   webServer: process.env.BASE_URL
     ? undefined
     : {
-        command: "pnpm start --port 3100",
+        command: "pnpm start --port 3301",
         url: baseURL,
         reuseExistingServer: true,
         timeout: 120_000,
