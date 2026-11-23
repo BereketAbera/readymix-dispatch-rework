@@ -53,6 +53,17 @@ test("a saved-view chip filters the table and updates the URL", async ({ page })
   await expect(rows).toHaveCount(40);
 });
 
+test("the table header stays visible while the table scrolls", async ({ page }) => {
+  await page.goto("/after");
+  const header = page.locator("thead").first();
+  const top = (await header.boundingBox())!.y;
+  const firstRow = page.getByTestId("order-row").first();
+  const rowTop = (await firstRow.boundingBox())!.y;
+  await page.locator('[data-slot="table-container"]').first().evaluate((el) => el.scrollBy(0, 400));
+  await expect.poll(async () => (await firstRow.boundingBox())!.y).toBeLessThan(rowTop - 300);
+  expect((await header.boundingBox())!.y).toBeCloseTo(top, 0);
+});
+
 test("search is one keystroke away and filters by truck", async ({ page }) => {
   await page.goto("/after");
   await page.keyboard.press("/");

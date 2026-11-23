@@ -198,9 +198,9 @@ function AssignTruck({
             {message}
           </span>
         ) : order.truckIds.length === 0 ? (
-          "Loads without a truck are shared across the trucks you add."
+          "Choose a truck to enable Assign. Loads without a truck are shared across the trucks you add."
         ) : (
-          "Adding a truck puts it into this job's rotation."
+          "Choose a truck to enable Assign. It joins this job's rotation."
         )}
       </p>
     </div>

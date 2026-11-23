@@ -92,9 +92,12 @@ export function MixLabel({ label }: { label: string }) {
   return (
     <>
       {parts.map((part, i) => (
-        <span key={part} className="whitespace-nowrap">
-          {part}
-          {i < parts.length - 1 ? " · " : ""}
+        <span key={part}>
+          <span className="whitespace-nowrap">
+            {part}
+            {i < parts.length - 1 ? "\u00a0·" : ""}
+          </span>
+          {i < parts.length - 1 ? " " : ""}
         </span>
       ))}
     </>

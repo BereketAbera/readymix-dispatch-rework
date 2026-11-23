@@ -18,7 +18,7 @@ const SECTIONS: { id: string; title: string; intro: string; rules: Rule[] }[] = 
     title: "Tables",
     intro: "For any list people scan and act on: orders, tickets, lab results, invoices, trucks.",
     rules: [
-      ["Rows are 52 px, text is 14 px, and a cell holds two lines at most.", "Ten to twelve orders fit on a laptop screen without cramping clicks or taps."],
+      ["Rows start at 52 px, text is 14 px, and a cell holds two lines at most.", "Ten to twelve orders fit on a laptop screen without cramping clicks or taps."],
       ["Numbers are right-aligned in tabular figures; times are 24-hour HH:MM.", "Digits line up, so totals and outliers stand out without reading every value."],
       ["Units go in the column header (Volume m³), not in every cell.", "Every number stays unambiguous with less noise in the rows."],
       ["Status is a word, an icon and a colour; risk adds a line that says how late.", "Works for colour-blind users and in a sunlit cab, and nobody learns codes."],
