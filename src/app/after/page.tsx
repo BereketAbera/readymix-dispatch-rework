@@ -1,20 +1,23 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getDispatchDay } from "@/lib/dispatch";
-import { parseBoardParams } from "./board-params";
+import { BoardSkeleton } from "./board-skeleton";
 import { DispatchBoard } from "./dispatch-board";
-
-export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "After: reworked dispatch board",
 };
 
-export default async function AfterPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const params = parseBoardParams(await searchParams);
+/**
+ * The page is static (served from the edge, no cold start). Filters, the
+ * preview state and the open order are read from the URL in the browser, so
+ * the server sends the board's skeleton and the board fills it in.
+ */
+export default function AfterPage() {
   const day = getDispatchDay();
-  return <DispatchBoard day={day} initial={params} />;
+  return (
+    <Suspense fallback={<BoardSkeleton />}>
+      <DispatchBoard day={day} />
+    </Suspense>
+  );
 }
