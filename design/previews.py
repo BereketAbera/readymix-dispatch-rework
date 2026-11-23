@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """One sheet that shows the drawn assets at the sizes they are used, for DESIGN-NOTES.md.
 
-The mark at 16 and 32 px on a light and a dark tab strip, the home-screen icon, and
-both status glyphs at 14 px (a badge) and 28 px (the same badge on a 2x screen).
-Each small export also appears blown up with hard pixel edges, which is where a
-glyph that has turned to mush shows. Reads the PNGs build.sh exported to design/out/
-and writes design/out/sizes.svg. Standard library only.
+Top: the browser-tab icon (the small glyph on the tile) at 16 px and the mark at 32 px, on a
+light and a dark tab strip, and the home-screen icon. Bottom: the two status glyphs at 14 px,
+a badge on a 1x screen, beside lucide's Factory and Clock so their weight can be compared,
+and at 28 px, the same badge on a 2x screen. Each small export also appears blown up with
+hard pixel edges, which is where a glyph that has turned to mush shows. Reads the PNGs
+build.sh exported to design/out/ and writes design/out/sizes.svg. Standard library only.
 """
 
 from pathlib import Path
@@ -25,12 +26,12 @@ def label(x, y, text, fill="#52525b"):
 
 
 def sheet() -> str:
-    w, h = 640, 330
+    w, h = 720, 360
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
         f'width="{w}" height="{h}" viewBox="0 0 {w} {h}" font-family="{FONT}">',
         f'<rect width="{w}" height="{h}" fill="#ffffff"/>',
-        label(16, 22, "Mark: favicon at 16 and 32 px on light and dark tab strips, home-screen icon at 180 px", "#18181b"),
+        label(16, 22, "Tab icon at 16 px and the mark at 32 px, on light and dark tab strips; home-screen icon at 180 px", "#18181b"),
         '<rect x="16" y="34" width="120" height="44" fill="#f1f3f4"/>',
         '<rect x="16" y="78" width="120" height="44" fill="#202124"/>',
     ]
@@ -43,16 +44,17 @@ def sheet() -> str:
         label(156, 140, "16 px, enlarged"),
         label(256, 140, "32 px, enlarged"),
         label(356, 140, "180 px, reduced"),
-        label(16, 180, "Status glyphs: 14 px in the badge, 28 px on a 2x screen", "#18181b"),
+        label(16, 180, "Status glyphs at 14 px (a badge on a 1x screen) beside lucide's Factory and Clock, then 28 px (2x)", "#18181b"),
     ]
-    for i, (status, name) in enumerate((("en-route", "En route"), ("pouring", "Pouring"))):
-        x = 16 + i * 310
+    glyphs = (("en-route", "En route"), ("pouring", "Pouring"), ("batching", "Batching"), ("scheduled", "Scheduled"))
+    for i, (status, name) in enumerate(glyphs):
+        x = 16 + i * 176
         parts += [
             image(x, 196, 14, f"check-{status}-14.png"),
-            image(x + 22, 196, 28, f"check-{status}-28.png"),
-            image(x + 62, 196, 84, f"check-{status}-14.png", pixelated=True),
-            image(x + 156, 196, 84, f"check-{status}-28.png", pixelated=True),
-            label(x, 300, f"{name}: 14 and 28 px, then enlarged"),
+            image(x + 22, 196, 84, f"check-{status}-14.png", pixelated=True),
+            image(x + 22, 288, 56, f"check-{status}-28.png", pixelated=True),
+            image(x + 86, 288, 28, f"check-{status}-28.png"),
+            label(x, 352, f"{name}: 14 px, then 28 px"),
         ]
     parts.append("</svg>\n")
     return "".join(parts)
