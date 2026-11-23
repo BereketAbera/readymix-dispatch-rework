@@ -2,12 +2,10 @@
 """The link card (Open Graph image): the before and after screenshots side by side on
 a dark card under the title, 1200 x 630.
 
-Writes design/out/og.svg; build.sh exports it to src/app/opengraph-image.png. The
-screenshots are linked, not copied: public/shots/before.png and after.png, the same
-images the overview shows. Retake them with design/shots.mjs when the board changes.
-
-The text asks for IBM Plex Sans, the site's face, and falls back to Helvetica Neue
-or Arial where Plex is not installed. Standard library only.
+Writes design/out/og.svg; design/og_render.mjs draws it into src/app/opengraph-image.png
+in Chromium, with the IBM Plex Sans file from the site's build. The screenshots are
+linked, not copied: public/shots/before.png and after.png, the same images the overview
+shows. Retake them with design/shots.mjs when the board changes. Standard library only.
 """
 
 from pathlib import Path

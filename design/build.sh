@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Rebuilds every drawn asset in the repo from the scripts in design/.
-# Needs Python 3 (standard library only) and the Inkscape 1.4 command line.
+# Needs Python 3 (standard library only), the Inkscape 1.4 command line, and a `pnpm build`
+# for the last step, which sets the link card in the site's face with Playwright's Chromium.
 #
 #   design/build.sh
 #
@@ -38,8 +39,9 @@ done
 python3 design/previews.py
 "$INKSCAPE" "$OUT/sizes.svg" --export-type=png --export-png-color-mode=RGB_8 --export-filename=design/previews/sizes.png
 
-# 4. The link card (Open Graph image), from the overview's two screenshots
+# 4. The link card (Open Graph image), from the overview's two screenshots, drawn in Chromium
+#    with the IBM Plex Sans file from the last build (Inkscape would fall back to another face)
 python3 design/og_image.py
-png "$OUT/og.svg" 1200 src/app/opengraph-image.png --export-png-color-mode=RGB_8
+node design/og_render.mjs
 
 echo "design/build.sh: done"
