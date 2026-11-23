@@ -22,7 +22,7 @@ export const ChutePour = createLucideIcon("chute-pour", [
 /** Stroke width of the mark, in its 32-unit tile. */
 export const MARK_STROKE = 2.6;
 
-/** The company mark's drawing for 27 px and up, in the 32-unit space of its tile. Draw it with MARK_STROKE. */
+/** The company mark's drawing for tiles of 32 px and up, in the tile's 32-unit space. Draw it with MARK_STROKE. */
 export const MixerMark = createLucideIcon({
   name: "mixer-mark",
   size: 32,

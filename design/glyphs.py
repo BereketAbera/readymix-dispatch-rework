@@ -3,7 +3,7 @@
 
 The mixer is drawn twice, once per size range:
 
-  MixerMark   the company mark, for 27 px and up: the sidebar tile, favicon.ico's 32 and
+  MixerMark   the company mark, for 32 px and up: the sidebar tile, favicon.ico's 32 and
               48 px images and the iOS home-screen icon. A computed drum (open cone at the
               rear, straight body, domed front) tilted rear-up, with one spiral fin, clear of
               the frame and the cab. Drawn in the tile's own 32-unit space.
@@ -39,7 +39,7 @@ OUT = ROOT / "design" / "out"
 
 BRAND = "#f0b81c"  # --brand in src/app/globals.css: the tile
 INK = "#14191f"  # --foreground in src/app/globals.css: the drawing on the tile
-ONE_PX_AT_14 = 24 / 14  # grid units per pixel in a 14 px badge icon
+MIN_GAP = 1.7  # grid units: one pixel in a 14 px badge icon is 24 / 14 = 1.71
 
 
 def num(n: float) -> str:
@@ -128,7 +128,8 @@ def small_mixer_gaps() -> dict:
 # Concrete falls off the end of the chute onto a heap in a shallow form. The heap is what
 # tells it from a download icon: an empty form under a falling line reads as an arrow into a tray.
 CHUTE_TIP = (10.6, 8.4)  # the stream falls straight down from here, onto the heap's top
-STREAM_END, HEAP_TOP, HEAP_HALF_WIDTH, FLOOR = 10.7, 14.5, 4.2, 19.7
+STREAM_END, HEAP_TOP, HEAP_HALF_WIDTH = 10.7, 14.5, 4.2
+WALL_TOP, FLOOR = 15.7, 19.7  # the form: two short walls and the floor
 
 
 def chute_pour():
@@ -137,7 +138,7 @@ def chute_pour():
     return [
         ("path", {"d": f"M2 3 {pt(CHUTE_TIP)}", "key": "chute"}),
         ("path", {"d": f"M{pt(CHUTE_TIP)}V{num(STREAM_END)}", "key": "stream"}),
-        ("path", {"d": f"M2.5 15.7V{num(FLOOR)}h19v-4", "key": "form"}),
+        ("path", {"d": f"M2.5 {num(WALL_TOP)}V{num(FLOOR)}h19v-{num(FLOOR - WALL_TOP)}", "key": "form"}),
         ("path", {"d": heap, "key": "heap"}),
     ]
 
@@ -275,9 +276,9 @@ LUCIDE_FOR_CHECKS = {
     "Clock": [("circle", {"cx": "12", "cy": "12", "r": "10"}), ("path", {"d": "M12 6v6l4 2"})],
 }
 
-# Badge colours from src/components/dispatch/status.tsx (Tailwind 4's 50 and 800 steps, as sRGB).
+# Badge colours from src/components/dispatch/status.tsx, as the browser draws Tailwind 4's values in sRGB.
 CHECKS = {
-    "en-route": (GLYPHS["MixerTruck"][1], "#f0f9ff", "#075985"),
+    "en-route": (GLYPHS["MixerTruck"][1], "#f0f9ff", "#00598a"),
     "pouring": (GLYPHS["ChutePour"][1], "#f0fdfa", "#005f5a"),
     "batching": (LUCIDE_FOR_CHECKS["Factory"], "#eef2ff", "#372aac"),
     "scheduled": (LUCIDE_FOR_CHECKS["Clock"], "#f1f5f9", "#314158"),
@@ -321,7 +322,7 @@ def mark_svg(radius=7.0, scale=1.0) -> str:
 
 def small_mark_svg(scale=1.15) -> str:
     """The small glyph centred on the tile, for the 16 px tab icon. It keeps its 2-unit stroke,
-    so its gaps stay 1.7 units: one pixel at 16 px."""
+    so its gaps stay 1.7 units, about one pixel at 16 px."""
     (rear_x, rear_y), _, r = SMALL_DRUM
     left, right = rear_x - r - 1, SMALL_CAB_X + 5.5 + 1  # the drum's rear to the cab's front, stroke edges
     top, bottom = rear_y - r - 1, SMALL_AXLE + 3  # the drum's top to the wheels' bottoms
@@ -346,7 +347,7 @@ def ts_module() -> str:
     lines.append("/** Stroke width of the mark, in its 32-unit tile. */")
     lines.append(f"export const MARK_STROKE = {num(MARK_STROKE)};")
     lines.append("")
-    lines.append("/** The company mark's drawing for 27 px and up, in the 32-unit space of its tile. Draw it with MARK_STROKE. */")
+    lines.append("/** The company mark's drawing for tiles of 32 px and up, in the tile's 32-unit space. Draw it with MARK_STROKE. */")
     lines.append('export const MixerMark = createLucideIcon({')
     lines.append('  name: "mixer-mark",')
     lines.append("  size: 32,")
@@ -363,8 +364,8 @@ def check_gaps():
     """Stops the build when a gap is too small to survive the size it is drawn for."""
     problems = []
     for name, gap in {**small_mixer_gaps(), **chute_gaps()}.items():
-        if gap < ONE_PX_AT_14 - 0.02:  # 1.7 units, with room for rounding to two decimals
-            problems.append(f"{name}: {gap:.2f} grid units, needs {ONE_PX_AT_14:.2f} (1 px at 14 px)")
+        if gap < MIN_GAP:
+            problems.append(f"{name}: {gap:.2f} grid units, needs {MIN_GAP} (1 px at 14 px)")
     for name, gap in mark_gaps().items():
         if gap < 1.2:
             problems.append(f"mark, {name}: {gap:.2f} px at 32 px, needs 1.2")
