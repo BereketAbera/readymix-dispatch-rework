@@ -17,19 +17,22 @@ mkdir -p "$OUT" design/previews
 
 png() { "$INKSCAPE" "$1" --export-type=png --export-width="$2" --export-filename="$3" "${@:4}"; }
 
-# 1. Vector sources: the mixer and chute glyphs (also written to src/components/glyphs.ts) and the mark
+# 1. Vector sources: the mixer and chute glyphs and the mark (also written to src/components/glyphs.ts).
+#    Stops here if a gap in a drawing is too small for the size it is used at.
 python3 design/glyphs.py
 
-# 2. The mark as the site's icons: the SVG favicon, the iOS home-screen icon (opaque, iOS rounds
-#    the corners itself) and favicon.ico for browsers and link previews that ask for that file
-"$INKSCAPE" "$OUT/mark.svg" --export-type=svg --export-plain-svg --export-filename=src/app/icon.svg
+# 2. The site's icons. The browser tab draws the SVG icon at 16 px, so icon.svg and favicon.ico's
+#    16 px image are the small glyph on the tile; favicon.ico's 32 and 48 px images and the iOS
+#    home-screen icon (opaque, iOS rounds the corners itself) are the mark
+"$INKSCAPE" "$OUT/mark-small.svg" --export-type=svg --export-plain-svg --export-filename=src/app/icon.svg
 png "$OUT/mark-square.svg" 180 src/app/apple-icon.png --export-png-color-mode=RGB_8
-for size in 16 32 48; do png "$OUT/mark.svg" "$size" "$OUT/mark-$size.png"; done
+png "$OUT/mark-small.svg" 16 "$OUT/mark-16.png"
+for size in 32 48; do png "$OUT/mark.svg" "$size" "$OUT/mark-$size.png"; done
 python3 design/favicon_ico.py src/app/favicon.ico "$OUT/mark-16.png" "$OUT/mark-32.png" "$OUT/mark-48.png"
 
-# 3. Size checks: each status glyph at 14 px (the badge) and 28 px (the badge on a 2x screen),
-#    on one sheet with the mark, for DESIGN-NOTES.md
-for status in en-route pouring; do
+# 3. Size checks: each status glyph at 14 px (the badge on a 1x screen) and 28 px (on a 2x screen),
+#    beside lucide's Factory and Clock, on one sheet with the icons, for DESIGN-NOTES.md
+for status in en-route pouring batching scheduled; do
   for size in 14 28; do png "$OUT/check-$status.svg" "$size" "$OUT/check-$status-$size.png"; done
 done
 python3 design/previews.py
