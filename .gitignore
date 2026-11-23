@@ -45,3 +45,6 @@ next-env.d.ts
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# drawn-asset intermediates (design/build.sh)
+/design/out/
